@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { menuItems as defaultMenuItems } from '../data/menuData';
+import { supabase } from '../supabaseClient';
+import { formatSupabaseOrder } from './CustomerView';
 
 export default function KitchenView({ onBackToDemo }) {
   const [orders, setOrders] = useState([]);
@@ -27,6 +29,7 @@ export default function KitchenView({ onBackToDemo }) {
 
   // Purchase Ledger & Date Selection States
   const [purchases, setPurchases] = useState([]);
+  const [isPurchasesOnCloud, setIsPurchasesOnCloud] = useState(false);
   const [selectedBookkeepingDate, setSelectedBookkeepingDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Form states for adding purchases
@@ -36,68 +39,143 @@ export default function KitchenView({ onBackToDemo }) {
   const [purchaseCost, setPurchaseCost] = useState('');
   const [purchaseStatus, setPurchaseStatus] = useState('paid');
 
-  // Load orders and settings from localStorage
+  // Fetch Menu Items from Supabase
+  const fetchMenuItems = async () => {
+    try {
+      const { data, error } = await supabase.from('menu_items').select('*').order('id', { ascending: true });
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setMenuItems(data);
+      } else {
+        // Seed if empty
+        const defaultWithNullCustomizations = defaultMenuItems.map(item => ({
+          ...item,
+          customizations: item.customizations || null
+        }));
+        await supabase.from('menu_items').insert(defaultWithNullCustomizations);
+        const { data: seeded } = await supabase.from('menu_items').select('*').order('id', { ascending: true });
+        if (seeded) setMenuItems(seeded);
+      }
+    } catch (err) {
+      console.error("Failed to load from Supabase menu_items in KitchenView:", err);
+      const savedMenuItems = localStorage.getItem('restaurant_menu_items');
+      if (savedMenuItems) {
+        setMenuItems(JSON.parse(savedMenuItems));
+      } else {
+        setMenuItems(defaultMenuItems);
+      }
+    }
+  };
+
+  // Fetch Orders from Supabase
+  const fetchOrders = async () => {
+    try {
+      const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      if (data) {
+        const mapped = data.map(formatSupabaseOrder).filter(Boolean);
+        setOrders(mapped);
+        prevOrdersCountRef.current = mapped.length;
+      }
+    } catch (err) {
+      console.error("Failed to load orders from Supabase:", err);
+      // Fallback
+      const loadedOrders = JSON.parse(localStorage.getItem('restaurant_orders') || '[]');
+      setOrders(loadedOrders);
+      prevOrdersCountRef.current = loadedOrders.length;
+    }
+  };
+
+  // Fetch Purchases from Supabase (with fallback to LocalStorage if table doesn't exist)
+  const fetchPurchases = async () => {
+    try {
+      const { data, error } = await supabase.from('purchases').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      if (data) {
+        const mapped = data.map(p => ({
+          id: String(p.id),
+          date: p.date,
+          time: p.time,
+          vendor: p.vendor,
+          itemName: p.item_name,
+          quantity: p.quantity,
+          cost: Number(p.cost),
+          status: p.status
+        }));
+        setPurchases(mapped);
+        setIsPurchasesOnCloud(true);
+      }
+    } catch (err) {
+      console.warn("Supabase purchases table query failed or table not found (falling back to LocalStorage):", err.message);
+      const savedPurchases = JSON.parse(localStorage.getItem('restaurant_purchases') || '[]');
+      setPurchases(savedPurchases);
+      setIsPurchasesOnCloud(false);
+    }
+  };
+
+  // Load orders, purchases, settings on mount
   useEffect(() => {
-    const loadedOrders = JSON.parse(localStorage.getItem('restaurant_orders') || '[]');
-    setOrders(loadedOrders);
-    prevOrdersCountRef.current = loadedOrders.length;
+    fetchMenuItems();
+    fetchOrders();
+    fetchPurchases();
 
     const savedCondiments = localStorage.getItem('condiments_availability');
     if (savedCondiments) {
       setCondimentsAvailability(JSON.parse(savedCondiments));
     }
 
-    const savedPurchases = JSON.parse(localStorage.getItem('restaurant_purchases') || '[]');
-    setPurchases(savedPurchases);
-
     const savedMenuItemsAvail = localStorage.getItem('menu_items_availability');
     if (savedMenuItemsAvail) {
       setMenuItemsAvailability(JSON.parse(savedMenuItemsAvail));
     }
-
-    const savedMenuItems = localStorage.getItem('restaurant_menu_items');
-    if (savedMenuItems) {
-      setMenuItems(JSON.parse(savedMenuItems));
-    } else {
-      setMenuItems(defaultMenuItems);
-      localStorage.setItem('restaurant_menu_items', JSON.stringify(defaultMenuItems));
-    }
   }, []);
 
-  // Listen for changes in localStorage from other tabs
+  // Listen to Supabase postgres changes in Realtime for live order notifications
+  useEffect(() => {
+    const ordersChannel = supabase.channel('kitchen-orders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+        fetchOrders();
+        // If a new order is received, trigger chime sound
+        if (payload.eventType === 'INSERT') {
+          triggerNotification();
+        }
+      })
+      .subscribe();
+
+    const menuChannel = supabase.channel('kitchen-menu')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => {
+        fetchMenuItems();
+      })
+      .subscribe();
+
+    const purchasesChannel = supabase.channel('kitchen-purchases')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'purchases' }, () => {
+        fetchPurchases();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(menuChannel);
+      supabase.removeChannel(purchasesChannel);
+    };
+  }, []);
+
+  // Listen for local changes to availability state
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === 'restaurant_orders') {
-        const updatedOrders = JSON.parse(e.newValue || '[]');
-        
-        // Check if there are new orders added (length is larger)
-        if (updatedOrders.length > prevOrdersCountRef.current) {
-          const newOrdersAdded = updatedOrders.filter(
-            newOrder => !orders.some(oldOrder => oldOrder.id === newOrder.id)
-          );
-          if (newOrdersAdded.length > 0) {
-            triggerNotification();
-          }
-        }
-        
-        setOrders(updatedOrders);
-        prevOrdersCountRef.current = updatedOrders.length;
-      } else if (e.key === 'condiments_availability') {
+      if (e.key === 'condiments_availability') {
         setCondimentsAvailability(JSON.parse(e.newValue || '{}'));
-      } else if (e.key === 'restaurant_purchases') {
-        setPurchases(JSON.parse(e.newValue || '[]'));
       } else if (e.key === 'menu_items_availability') {
         setMenuItemsAvailability(JSON.parse(e.newValue || '{}'));
-      } else if (e.key === 'restaurant_menu_items') {
-        setMenuItems(JSON.parse(e.newValue || '[]'));
       }
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [orders]);
+  }, []);
 
   // Product CRUD Handlers
-  const handleSaveProduct = (e) => {
+  const handleSaveProduct = async (e) => {
     e.preventDefault();
     if (!prodName.trim() || !prodPrice) {
       alert('請填寫商品名稱與單價！');
@@ -152,45 +230,36 @@ export default function KitchenView({ onBackToDemo }) {
       imgUrl = prodCategory === 'mee-sua' ? '/images/taiwanese_mee_sua.jpg' : '/images/spicy_kimchi.jpg';
     }
 
-    let updatedMenuItems = [...menuItems];
-
-    if (editingItemId) {
-      // Edit mode
-      updatedMenuItems = menuItems.map(item => {
-        if (item.id === editingItemId) {
-          return {
-            ...item,
-            name: prodName.trim(),
-            category: prodCategory,
-            price: priceNum,
-            description: prodDescription.trim(),
-            image: imgUrl,
-            customizations: customizations
-          };
-        }
-        return item;
-      });
-      setEditingItemId(null);
-    } else {
-      // Add mode
-      const newId = `${prodCategory === 'mee-sua' ? 'm' : 's'}-${Date.now()}`;
-      const newItem = {
-        id: newId,
-        category: prodCategory,
-        name: prodName.trim(),
-        description: prodDescription.trim(),
-        price: priceNum,
-        image: imgUrl,
-        customizations: customizations
-      };
-      updatedMenuItems.push(newItem);
+    try {
+      if (editingItemId) {
+        // Edit mode
+        const { error } = await supabase.from('menu_items').update({
+          name: prodName.trim(),
+          category: prodCategory,
+          price: priceNum,
+          description: prodDescription.trim(),
+          image: imgUrl,
+          customizations: customizations
+        }).eq('id', editingItemId);
+        if (error) throw error;
+        setEditingItemId(null);
+      } else {
+        // Add mode
+        const { error } = await supabase.from('menu_items').insert([{
+          category: prodCategory,
+          name: prodName.trim(),
+          description: prodDescription.trim(),
+          price: priceNum,
+          image: imgUrl,
+          customizations: customizations
+        }]);
+        if (error) throw error;
+      }
+      fetchMenuItems();
+    } catch (err) {
+      console.error("Failed to save product in Supabase:", err);
+      alert("儲存商品失敗！");
     }
-
-    setMenuItems(updatedMenuItems);
-    localStorage.setItem('restaurant_menu_items', JSON.stringify(updatedMenuItems));
-    
-    // Dispatch a storage event manually so the current page updates
-    window.dispatchEvent(new Event('storage'));
 
     // Reset form fields
     setProdName('');
@@ -225,24 +294,18 @@ export default function KitchenView({ onBackToDemo }) {
     setProdCustomization('mee-sua-standard');
   };
 
-  const handleDeleteProduct = (itemId, itemName) => {
+  const handleDeleteProduct = async (itemId, itemName) => {
     if (window.confirm(`確定要將商品「${itemName}」從菜單中永久刪除嗎？`)) {
-      const updated = menuItems.filter(item => item.id !== itemId);
-      setMenuItems(updated);
-      localStorage.setItem('restaurant_menu_items', JSON.stringify(updated));
-
-      // Remove from availability states
-      const savedAvail = JSON.parse(localStorage.getItem('menu_items_availability') || '{}');
-      delete savedAvail[itemId];
-      setMenuItemsAvailability(savedAvail);
-      localStorage.setItem('menu_items_availability', JSON.stringify(savedAvail));
-
-      // Dispatch storage event
-      window.dispatchEvent(new Event('storage'));
-
-      // If deleting the item currently being edited, cancel edit
-      if (editingItemId === itemId) {
-        handleCancelEdit();
+      try {
+        const { error } = await supabase.from('menu_items').delete().eq('id', itemId);
+        if (error) throw error;
+        fetchMenuItems();
+        if (editingItemId === itemId) {
+          handleCancelEdit();
+        }
+      } catch (err) {
+        console.error("Failed to delete product from Supabase:", err);
+        alert("刪除商品失敗！");
       }
     }
   };
@@ -283,40 +346,43 @@ export default function KitchenView({ onBackToDemo }) {
   };
 
   // Helper to update order status
-  const updateOrderStatus = (orderId, newStatus) => {
-    const updated = orders.map(order => {
-      if (order.id === orderId) {
-        // clear the isNew flash flag when status moves forward
-        return { ...order, status: newStatus, isNew: false };
-      }
-      return order;
-    });
-
-    setOrders(updated);
-    prevOrdersCountRef.current = updated.length;
-    localStorage.setItem('restaurant_orders', JSON.stringify(updated));
-    
-    // Dispatch storage event to update other tabs immediately
-    window.dispatchEvent(new Event('storage'));
-  };
-
-  const handleClearOrders = () => {
-    if (window.confirm('確定要清空所有訂單記錄嗎？這將會清除所有歷史與進行中的訂單。')) {
-      localStorage.setItem('restaurant_orders', '[]');
-      localStorage.removeItem('active_customer_order_id');
-      setOrders([]);
-      prevOrdersCountRef.current = 0;
-      window.dispatchEvent(new Event('storage'));
+  const updateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const { error } = await supabase.from('orders').update({
+        status: newStatus
+      }).eq('id', orderId);
+      if (error) throw error;
+      fetchOrders();
+    } catch (err) {
+      console.error("Failed to update order status in Supabase:", err);
+      alert("更新訂單狀態失敗！");
     }
   };
 
-  const handleDeleteOrder = (orderId) => {
+  const handleClearOrders = async () => {
+    if (window.confirm('確定要清空所有訂單記錄嗎？這將會清除雲端資料庫上所有歷史與進行中的訂單。')) {
+      try {
+        const { error } = await supabase.from('orders').delete().neq('id', 0); // deletes all rows
+        if (error) throw error;
+        localStorage.removeItem('active_customer_order_id');
+        fetchOrders();
+      } catch (err) {
+        console.error("Failed to clear orders in Supabase:", err);
+        alert("清空訂單失敗！");
+      }
+    }
+  };
+
+  const handleDeleteOrder = async (orderId) => {
     if (window.confirm('確定要取消並刪除這筆訂單嗎？')) {
-      const filtered = orders.filter(o => o.id !== orderId);
-      setOrders(filtered);
-      prevOrdersCountRef.current = filtered.length;
-      localStorage.setItem('restaurant_orders', JSON.stringify(filtered));
-      window.dispatchEvent(new Event('storage'));
+      try {
+        const { error } = await supabase.from('orders').delete().eq('id', orderId);
+        if (error) throw error;
+        fetchOrders();
+      } catch (err) {
+        console.error("Failed to delete order from Supabase:", err);
+        alert("刪除訂單失敗！");
+      }
     }
   };
 
@@ -341,25 +407,47 @@ export default function KitchenView({ onBackToDemo }) {
     window.dispatchEvent(new Event('storage'));
   };
 
-  const handleAddPurchase = (e) => {
+  const handleAddPurchase = async (e) => {
     e.preventDefault();
     if (!purchaseVendor.trim() || !purchaseQty.trim() || !purchaseCost) return;
 
-    const newPurchase = {
-      id: `PUR-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
-      date: selectedBookkeepingDate, // associate with the currently viewed bookkeeping date
-      time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
-      vendor: purchaseVendor,
-      itemName: purchaseItemName,
-      quantity: purchaseQty,
-      cost: Number(purchaseCost),
-      status: purchaseStatus
-    };
+    const time = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+    const costNum = Number(purchaseCost);
 
-    const updated = [newPurchase, ...purchases];
-    setPurchases(updated);
-    localStorage.setItem('restaurant_purchases', JSON.stringify(updated));
-    window.dispatchEvent(new Event('storage'));
+    if (isPurchasesOnCloud) {
+      try {
+        const { error } = await supabase.from('purchases').insert([{
+          purchase_id: `PUR-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
+          date: selectedBookkeepingDate,
+          time,
+          vendor: purchaseVendor,
+          item_name: purchaseItemName,
+          quantity: purchaseQty,
+          cost: costNum,
+          status: purchaseStatus
+        }]);
+        if (error) throw error;
+        fetchPurchases();
+      } catch (err) {
+        console.error("Failed to add purchase to Supabase:", err);
+        alert("登錄進貨資料至雲端失敗！");
+      }
+    } else {
+      const newPurchase = {
+        id: `PUR-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
+        date: selectedBookkeepingDate,
+        time,
+        vendor: purchaseVendor,
+        itemName: purchaseItemName,
+        quantity: purchaseQty,
+        cost: costNum,
+        status: purchaseStatus
+      };
+      const updated = [newPurchase, ...purchases];
+      setPurchases(updated);
+      localStorage.setItem('restaurant_purchases', JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
+    }
 
     // Clear form inputs
     setPurchaseVendor('');
@@ -367,13 +455,56 @@ export default function KitchenView({ onBackToDemo }) {
     setPurchaseCost('');
   };
 
-  const handleDeletePurchase = (id) => {
+  const handleDeletePurchase = async (id) => {
     if (window.confirm('確定要刪除這筆進貨支出嗎？')) {
-      const updated = purchases.filter(p => p.id !== id);
-      setPurchases(updated);
-      localStorage.setItem('restaurant_purchases', JSON.stringify(updated));
-      window.dispatchEvent(new Event('storage'));
+      if (isPurchasesOnCloud) {
+        try {
+          const { error } = await supabase.from('purchases').delete().eq('id', id);
+          if (error) throw error;
+          fetchPurchases();
+        } catch (err) {
+          console.error("Failed to delete purchase from Supabase:", err);
+          alert("刪除進貨資料失敗！");
+        }
+      } else {
+        const updated = purchases.filter(p => p.id !== id);
+        setPurchases(updated);
+        localStorage.setItem('restaurant_purchases', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+      }
     }
+  };
+
+  const handleExportCSV = () => {
+    if (completedOrders.length === 0) {
+      alert('該日尚無已結案的交易明細可供匯出！');
+      return;
+    }
+    
+    // Add UTF-8 BOM for correct Chinese display in Excel
+    let csvContent = "\uFEFF";
+    csvContent += "時間,流水號,類型,顧客姓名/桌號,實收金額(NT$),付款方式,購買明細\n";
+    
+    completedOrders.forEach(order => {
+      const time = order.time;
+      const serial = order.serialNum || order.id.slice(-6);
+      const type = order.type === 'dine-in' ? '內用' : '外帶';
+      const name = order.customerName.replace(/,/g, ' '); // Avoid CSV column shifting
+      const total = order.total;
+      const payment = order.paymentMethod === 'online' ? '線上已付' : '現金付款';
+      const itemsStr = order.items.map(item => `${item.name}x${item.quantity}`).join(' | ');
+      
+      csvContent += `${time},${serial},${type},${name},${total},${payment},"${itemsStr}"\n`;
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `龍城麵線_帳目明細_${selectedBookkeepingDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Filter orders by status
@@ -975,9 +1106,30 @@ export default function KitchenView({ onBackToDemo }) {
 
             {/* Sales ledger table */}
             <div>
-              <h5 style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-main)' }}>
-                📝 已結交易流水帳明細
-              </h5>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <h5 style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>
+                  📝 已結交易流水帳明細
+                </h5>
+                <button 
+                  onClick={handleExportCSV}
+                  className="btn-secondary"
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '0.75rem',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    backgroundColor: 'rgba(34, 197, 94, 0.05)',
+                    borderColor: '#22c55e',
+                    color: '#16a34a',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  📥 匯出當日帳目 CSV
+                </button>
+              </div>
               <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}>
                 <table style={{
                   width: '100%',
@@ -1033,6 +1185,17 @@ export default function KitchenView({ onBackToDemo }) {
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', marginTop: '10px' }}>
               <h5 style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '12px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 🛒 食材進貨與廠商採購流水帳 ({selectedBookkeepingDate} 記錄)
+                <span style={{
+                  fontSize: '0.65rem',
+                  padding: '2px 8px',
+                  borderRadius: '10px',
+                  fontWeight: '600',
+                  marginLeft: '8px',
+                  backgroundColor: isPurchasesOnCloud ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)',
+                  color: isPurchasesOnCloud ? '#16a34a' : '#d97706'
+                }}>
+                  {isPurchasesOnCloud ? '☁️ 雲端同步' : '💾 本機暫存 (請於 Supabase 執行 purchases 建表以啟動雲端記帳)'}
+                </span>
               </h5>
 
               {/* Add Purchase Form */}

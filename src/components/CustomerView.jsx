@@ -3,11 +3,36 @@ import { menuCategories, menuItems as defaultMenuItems } from '../data/menuData'
 import ItemModal from './ItemModal';
 import CartPanel from './CartPanel';
 import OrderTracker from './OrderTracker';
+import { supabase } from '../supabaseClient';
 
 // Import Firebase and config settings
 import { firebaseConfig } from '../config';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+
+// Helper to format Supabase order row into React component format
+export const formatSupabaseOrder = (dbOrder) => {
+  if (!dbOrder) return null;
+  const itemsData = dbOrder.items || {};
+  return {
+    id: String(dbOrder.id),
+    serialNum: dbOrder.order_number,
+    time: new Date(dbOrder.created_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+    timestamp: new Date(dbOrder.created_at).getTime(),
+    status: dbOrder.status,
+    type: dbOrder.type === 'dine-in' ? 'dine-in' : 'takeout',
+    tableName: dbOrder.table_number,
+    customerName: itemsData.customerName || (dbOrder.type === 'dine-in' ? `內用 ${dbOrder.table_number} 號桌` : ''),
+    customerPhone: itemsData.customerPhone || '',
+    phoneVerified: true,
+    pickupTime: itemsData.pickupTime || '',
+    paymentMethod: itemsData.paymentMethod || 'cash',
+    paymentStatus: dbOrder.payment_status,
+    remarks: itemsData.remarks || '',
+    items: itemsData.cart || [],
+    total: Number(dbOrder.total)
+  };
+};
 
 // Initialize Firebase App
 let firebaseApp = null;
@@ -67,20 +92,50 @@ export default function CustomerView({ tableNumber, onBackToDemo }) {
   const recaptchaVerifierRef = useRef(null);
   const timerIntervalRef = useRef(null);
 
-  // Load active order and all orders from LocalStorage
+  // Fetch menu items from Supabase
+  const fetchMenuItems = async () => {
+    try {
+      const { data, error } = await supabase.from('menu_items').select('*').order('id', { ascending: true });
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setMenuItems(data);
+      } else {
+        // Seed database if empty
+        const defaultWithNullCustomizations = defaultMenuItems.map(item => ({
+          ...item,
+          customizations: item.customizations || null
+        }));
+        await supabase.from('menu_items').insert(defaultWithNullCustomizations);
+        const { data: seeded } = await supabase.from('menu_items').select('*').order('id', { ascending: true });
+        if (seeded) setMenuItems(seeded);
+      }
+    } catch (err) {
+      console.error("Failed to load from Supabase menu_items, using localStorage/default:", err);
+      const savedMenuItems = localStorage.getItem('restaurant_menu_items');
+      if (savedMenuItems) {
+        setMenuItems(JSON.parse(savedMenuItems));
+      } else {
+        setMenuItems(defaultMenuItems);
+      }
+    }
+  };
+
+  // Load active order and all orders from Supabase
   useEffect(() => {
-    const orders = JSON.parse(localStorage.getItem('restaurant_orders') || '[]');
-    setAllOrders(orders);
+    fetchMenuItems();
 
     const savedActiveId = localStorage.getItem('active_customer_order_id');
     if (savedActiveId) {
-      const activeOrder = orders.find(o => o.id === savedActiveId);
-      if (activeOrder && activeOrder.status !== 'completed') {
-        setActiveOrderId(savedActiveId);
-        setViewState('tracking');
-      } else {
-        localStorage.removeItem('active_customer_order_id');
-      }
+      supabase.from('orders').select('*').eq('id', savedActiveId).single().then(({ data, error }) => {
+        if (data && data.status !== 'completed') {
+          const formatted = formatSupabaseOrder(data);
+          setAllOrders([formatted]);
+          setActiveOrderId(String(data.id));
+          setViewState('tracking');
+        } else {
+          localStorage.removeItem('active_customer_order_id');
+        }
+      });
     }
 
     const savedCondiments = localStorage.getItem('condiments_availability');
@@ -92,28 +147,55 @@ export default function CustomerView({ tableNumber, onBackToDemo }) {
     if (savedMenuItemsAvail) {
       setMenuItemsAvailability(JSON.parse(savedMenuItemsAvail));
     }
-
-    const savedMenuItems = localStorage.getItem('restaurant_menu_items');
-    if (savedMenuItems) {
-      setMenuItems(JSON.parse(savedMenuItems));
-    } else {
-      setMenuItems(defaultMenuItems);
-      localStorage.setItem('restaurant_menu_items', JSON.stringify(defaultMenuItems));
-    }
   }, []);
 
-  // Listen to storage changes to keep order status in sync in real-time
+  // Listen to Supabase Realtime changes for menu items and the active order status
+  useEffect(() => {
+    const menuChannel = supabase.channel('menu-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => {
+        fetchMenuItems();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(menuChannel);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeOrderId) return;
+    const orderChannel = supabase.channel(`order-${activeOrderId}`)
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'orders',
+        filter: `id=eq.${activeOrderId}`
+      }, payload => {
+        const formatted = formatSupabaseOrder(payload.new);
+        if (formatted) {
+          setAllOrders([formatted]);
+          if (formatted.status === 'completed') {
+            // Clear tracking state once order is completed
+            localStorage.removeItem('active_customer_order_id');
+            setActiveOrderId(null);
+            setViewState('menu');
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(orderChannel);
+    };
+  }, [activeOrderId]);
+
+  // Listen to local storage changes for local variables
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === 'restaurant_orders') {
-        const orders = JSON.parse(e.newValue || '[]');
-        setAllOrders(orders);
-      } else if (e.key === 'condiments_availability') {
+      if (e.key === 'condiments_availability') {
         setCondimentsAvailability(JSON.parse(e.newValue || '{}'));
       } else if (e.key === 'menu_items_availability') {
         setMenuItemsAvailability(JSON.parse(e.newValue || '{}'));
-      } else if (e.key === 'restaurant_menu_items') {
-        setMenuItems(JSON.parse(e.newValue || '[]'));
       }
     };
     window.addEventListener('storage', handleStorageChange);
@@ -286,52 +368,62 @@ export default function CustomerView({ tableNumber, onBackToDemo }) {
     }
   };
 
-  const submitOrder = (verified = false) => {
+  const submitOrder = async (verified = false) => {
     const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
     const total = subtotal;
 
-    const orderId = `ORD-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const orders = JSON.parse(localStorage.getItem('restaurant_orders') || '[]');
-
     // Generate easy-to-read daily sequential serial number (e.g., A-001)
-    const today = new Date().toDateString();
-    const todayOrders = orders.filter(o => new Date(o.timestamp).toDateString() === today);
-    const serialNum = `A-${String(todayOrders.length + 1).padStart(3, '0')}`;
-
-    const newOrder = {
-      id: orderId,
-      serialNum,
-      time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
-      timestamp: Date.now(),
-      status: 'received',
-      type: tableNumber ? 'dine-in' : 'takeout',
-      tableName: tableNumber || null,
-      customerName: tableNumber ? `內用 ${tableNumber} 號桌` : custName,
-      customerPhone: tableNumber ? '' : custPhone,
-      phoneVerified: tableNumber ? true : verified, // use the passed-in direct parameter
-      pickupTime: tableNumber ? '' : pickupTime,
-      paymentMethod,
-      paymentStatus: paymentMethod === 'online' ? 'paid' : 'unpaid',
-      remarks,
-      items: cart,
-      total,
-      isNew: true
-    };
-
-    const updatedOrders = [newOrder, ...orders];
-    localStorage.setItem('restaurant_orders', JSON.stringify(updatedOrders));
-    localStorage.setItem('active_customer_order_id', orderId);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
     
-    // Crucial: Update local state immediately so tracking screen is not blank!
-    setAllOrders(updatedOrders);
+    let count = 0;
+    try {
+      const { count: dbCount, error } = await supabase.from('orders')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', todayStart.toISOString());
+      if (!error && dbCount !== null) {
+        count = dbCount;
+      }
+    } catch (err) {
+      console.warn("Failed to fetch today's order count, default to 0:", err);
+    }
     
-    // Trigger sync event for other windows/tabs
-    window.dispatchEvent(new Event('storage'));
+    const serialNum = `A-${String(count + 1).padStart(3, '0')}`;
 
-    // Clear cart and states
-    setCart([]);
-    setActiveOrderId(orderId);
-    setViewState('tracking');
+    try {
+      const { data: dbOrders, error: insertError } = await supabase.from('orders').insert([{
+        order_number: serialNum,
+        items: {
+          cart: cart,
+          customerName: tableNumber ? `內用 ${tableNumber} 號桌` : custName,
+          customerPhone: tableNumber ? '' : custPhone,
+          pickupTime: tableNumber ? '' : pickupTime,
+          paymentMethod,
+          remarks
+        },
+        total,
+        type: tableNumber ? 'dine-in' : 'takeout',
+        table_number: tableNumber || null,
+        status: 'received',
+        payment_status: paymentMethod === 'online' ? 'paid' : 'unpaid'
+      }]).select();
+
+      if (insertError) throw insertError;
+
+      const createdOrder = dbOrders[0];
+      const formatted = formatSupabaseOrder(createdOrder);
+
+      localStorage.setItem('active_customer_order_id', String(createdOrder.id));
+      setAllOrders([formatted]);
+      setActiveOrderId(String(createdOrder.id));
+      
+      // Clear cart
+      setCart([]);
+      setViewState('tracking');
+    } catch (err) {
+      console.error("Failed to submit order to Supabase:", err);
+      alert("提交訂單至雲端伺服器失敗，請檢查網路連線或稍後再試！");
+    }
   };
 
   // Filtered menu items based on active category and search input
