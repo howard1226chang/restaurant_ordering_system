@@ -789,59 +789,61 @@ export default function KitchenView({ onBackToDemo }) {
         </div>
 
         {/* 新增 / 編輯商品表單 */}
-        <div id="product-edit-form" style={{ marginTop: '16px', padding: '16px', border: '1px dashed var(--border)', borderRadius: 'var(--radius-md)', backgroundColor: 'rgba(0,0,0,0.015)' }}>
-          <h4 style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div id="product-edit-form" style={{ marginTop: '16px', padding: '20px', border: '1px dashed var(--border)', borderRadius: 'var(--radius-md)', backgroundColor: 'rgba(0,0,0,0.015)' }}>
+          <h4 style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             {editingItemId ? '📝 編輯商品內容' : '➕ 新增自訂商品上架'}
             {editingItemId && <span style={{ fontSize: '0.7rem', color: 'var(--primary)', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(255,107,53,0.1)' }}>編輯中</span>}
           </h4>
-          <form onSubmit={handleSaveProduct} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品名稱 *</label>
-              <input 
-                type="text" 
-                placeholder="例如：古早味滷肉飯" 
-                value={prodName} 
-                onChange={(e) => setProdName(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)' }}
-                required
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品分類 *</label>
-              <select 
-                value={prodCategory} 
-                onChange={(e) => setProdCategory(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', cursor: 'pointer' }}
-              >
-                <option value="mee-sua">🍜 招牌麵線</option>
-                <option value="specialties">🔥 特色產品</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品單價 (NT$) *</label>
-              <input 
-                type="number" 
-                placeholder="例如：45" 
-                value={prodPrice} 
-                onChange={(e) => setProdPrice(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)' }}
-                min="0"
-                required
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>客製規格選項 *</label>
-              <select 
-                value={prodCustomization} 
-                onChange={(e) => setProdCustomization(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', cursor: 'pointer' }}
-              >
-                <option value="mee-sua-standard">📋 標準麵線客製 (可選大小碗、加料與調味)</option>
-                <option value="none">🚫 無客製規格 (前台僅可選擇選購數量)</option>
-              </select>
-            </div>
-            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
-              <div style={{ flex: 1 }}>
+          
+          <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+            {/* 左側表單輸入欄位 */}
+            <form onSubmit={handleSaveProduct} style={{ flex: 1, minWidth: '300px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品名稱 *</label>
+                <input 
+                  type="text" 
+                  placeholder="例如：古早味滷肉飯" 
+                  value={prodName} 
+                  onChange={(e) => setProdName(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)' }}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品分類 *</label>
+                <select 
+                  value={prodCategory} 
+                  onChange={(e) => setProdCategory(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', cursor: 'pointer' }}
+                >
+                  <option value="mee-sua">🍜 招牌麵線</option>
+                  <option value="specialties">🔥 特色產品</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品單價 (NT$) *</label>
+                <input 
+                  type="number" 
+                  placeholder="例如：45" 
+                  value={prodPrice} 
+                  onChange={(e) => setProdPrice(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)' }}
+                  min="0"
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>客製規格選項 *</label>
+                <select 
+                  value={prodCustomization} 
+                  onChange={(e) => setProdCustomization(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', cursor: 'pointer' }}
+                >
+                  <option value="mee-sua-standard">📋 標準麵線客製 (可選大小碗、加料與調味)</option>
+                  <option value="none">🚫 無客製規格 (前台僅可選擇選購數量)</option>
+                </select>
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品圖片網址 (選填，留空將套用預設圖片)</label>
                 <input 
                   type="text" 
@@ -851,46 +853,83 @@ export default function KitchenView({ onBackToDemo }) {
                   style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)' }}
                 />
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', width: '70px', flexShrink: 0 }}>
-                <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>圖片預覽</span>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品說明 (選填)</label>
+                <textarea 
+                  placeholder="例如：秘製陳年滷汁，手工慢火細熬，香味四溢..." 
+                  value={prodDescription} 
+                  onChange={(e) => setProdDescription(e.target.value)}
+                  rows="2"
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', resize: 'vertical', fontFamily: 'inherit' }}
+                />
+              </div>
+              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                {editingItemId && (
+                  <button 
+                    type="button" 
+                    onClick={handleCancelEdit}
+                    style={{ padding: '8px 16px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', color: 'var(--text-main)', cursor: 'pointer' }}
+                  >
+                    ❌ 取消編輯
+                  </button>
+                )}
+                <button 
+                  type="submit" 
+                  style={{ padding: '8px 20px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: 'var(--primary)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  {editingItemId ? '💾 保存商品修改' : '➕ 新增商品上架'}
+                </button>
+              </div>
+            </form>
+
+            {/* 右側商品卡片即時預覽 (加大、顯眼、對應前台卡片) */}
+            <div style={{
+              width: '240px',
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '16px',
+              backgroundColor: 'var(--bg-card)',
+              boxShadow: 'var(--shadow-md)',
+              alignSelf: 'flex-start'
+            }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'bold', borderBottom: '1px solid var(--border)', paddingBottom: '6px', display: 'block' }}>
+                👁️ 客戶端卡片即時預覽
+              </span>
+              <div style={{ position: 'relative', width: '100%', height: '150px', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border)' }}>
                 <img 
                   src={prodImage.trim() || (prodCategory === 'mee-sua' ? '/images/taiwanese_mee_sua.jpg' : '/images/spicy_kimchi.jpg')} 
                   alt="預覽" 
-                  style={{ width: '60px', height: '60px', borderRadius: 'var(--radius-sm)', objectFit: 'cover', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   onError={(e) => {
                     e.target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&auto=format&fit=crop&q=60';
                   }}
                 />
+                <div style={{ position: 'absolute', top: '8px', right: '8px', padding: '2px 8px', borderRadius: 'var(--radius-full)', backgroundColor: 'var(--primary)', color: 'white', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                  {prodCategory === 'mee-sua' ? '招牌麵線' : '特色產品'}
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
+                  {prodName.trim() || '商品名稱'}
+                </h5>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', height: '36px', lineHeight: '1.25' }}>
+                  {prodDescription.trim() || '在此輸入商品說明描述...'}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', borderTop: '1px dashed var(--border)', paddingTop: '8px' }}>
+                  <span style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--primary)' }}>
+                    NT$ {prodPrice || '0'}
+                  </span>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', backgroundColor: 'var(--bg-input)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                    {prodCustomization === 'mee-sua-standard' ? '📋 有客製' : '🚫 僅選數量'}
+                  </span>
+                </div>
               </div>
             </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品說明 (選填)</label>
-              <textarea 
-                placeholder="例如：秘製陳年滷汁，手工慢火細熬，香味四溢..." 
-                value={prodDescription} 
-                onChange={(e) => setProdDescription(e.target.value)}
-                rows="2"
-                style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', resize: 'vertical', fontFamily: 'inherit' }}
-              />
-            </div>
-            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
-              {editingItemId && (
-                <button 
-                  type="button" 
-                  onClick={handleCancelEdit}
-                  style={{ padding: '8px 16px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', color: 'var(--text-main)', cursor: 'pointer' }}
-                >
-                  ❌ 取消編輯
-                </button>
-              )}
-              <button 
-                type="submit" 
-                style={{ padding: '8px 20px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: 'var(--primary)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                {editingItemId ? '💾 保存商品修改' : '➕ 新增商品上架'}
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
       </div>
 
