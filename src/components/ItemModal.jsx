@@ -188,9 +188,9 @@ export default function ItemModal({ item, onClose, onAddToCart, condimentsAvaila
                           />
                           <span>{opt.label}</span>
                         </div>
-                        {opt.priceChange > 0 && (
-                          <span className="choice-price-diff plus">+${opt.priceChange}</span>
-                        )}
+                        <span className="choice-price-diff plus" style={{ color: 'var(--primary)', fontWeight: 'bold' }}>
+                          NT$ {item.price + opt.priceChange}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -294,7 +294,7 @@ export default function ItemModal({ item, onClose, onAddToCart, condimentsAvaila
         <div className="modal-footer">
           <button className="add-to-cart-btn" onClick={handleSubmit}>
             <span>加入購物車</span>
-            <span>NT$ {totalPrice}</span>
+            <span>總計 NT$ {totalPrice}</span>
           </button>
         </div>
       </div>
