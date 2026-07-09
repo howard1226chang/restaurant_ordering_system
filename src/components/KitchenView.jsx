@@ -3,7 +3,7 @@ import { menuItems as defaultMenuItems } from '../data/menuData';
 import { supabase } from '../supabaseClient';
 import { formatSupabaseOrder } from './CustomerView';
 
-export default function KitchenView({ onBackToDemo }) {
+export default function KitchenView({ onBackToDemo, onLogout }) {
   const [orders, setOrders] = useState([]);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const prevOrdersCountRef = useRef(0);
@@ -638,6 +638,38 @@ export default function KitchenView({ onBackToDemo }) {
           <button className="btn-danger" onClick={handleClearOrders} style={{ height: '33px' }}>
             🧹 清除所有模擬資料
           </button>
+          
+          <a 
+            href="/?pos=true" 
+            target="_blank"
+            rel="noreferrer"
+            className="btn-secondary" 
+            style={{ 
+              textDecoration: 'none', 
+              fontSize: '0.8rem', 
+              padding: '6px 12px', 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '4px', 
+              height: '33px', 
+              backgroundColor: 'rgba(22, 163, 74, 0.05)', 
+              borderColor: '#16a34a', 
+              color: '#16a34a',
+              fontWeight: 'bold'
+            }}
+          >
+            💵 開啟收銀 POS
+          </a>
+
+          {onLogout && (
+            <button 
+              onClick={onLogout}
+              className="btn-secondary"
+              style={{ height: '33px', fontWeight: 'bold' }}
+            >
+              🔒 登出鎖定
+            </button>
+          )}
         </div>
       </header>
 
