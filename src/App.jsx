@@ -27,9 +27,11 @@ function App() {
     const posParam = params.get('pos');
     const demoParam = params.get('demo');
 
-    // 1. Domain-based routing (postdragon.twabc.com routes directly to POS view)
-    if (hostname === 'postdragon.twabc.com') {
+    // 1. Subdomain-based routing (pos.* -> POS, admin.* -> Kitchen)
+    if (hostname.startsWith('pos.')) {
       setRole('pos');
+    } else if (hostname.startsWith('admin.')) {
+      setRole('kitchen');
     }
     // 2. URL parameter routing
     else if (adminParam === 'true') {
