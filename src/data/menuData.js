@@ -158,13 +158,5 @@ export const menuItems = [
     image: '/images/spicy_kimchi.jpg',
     customizations: null
   },
-  {
-    id: 's5',
-    category: 'specialties',
-    name: '手工辣醬 (罐裝)',
-    description: '龍城獨家秘製手工辣椒醬，香辣帶勁，純手工無防腐劑，送禮自用皆宜。',
-    price: 150,
-    image: '/images/handmade_chili.jpg',
-    customizations: null
-  }
+
 ];
