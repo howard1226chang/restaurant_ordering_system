@@ -635,10 +635,7 @@ export default function KitchenView({ onBackToDemo, onLogout }) {
           >
             {audioEnabled ? '🔊 接單音效已開啟' : '🔇 點此開啟接單音效'}
           </button>
-          <button className="btn-danger" onClick={handleClearOrders} style={{ height: '33px' }}>
-            🧹 清除所有模擬資料
-          </button>
-          
+
           <a 
             href="/?pos=true" 
             target="_blank"
