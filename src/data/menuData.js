@@ -128,7 +128,7 @@ export const menuItems = [
     name: '要你命1000',
     description: '挑戰開始！加入秘製鬼椒辣醬的地獄級麻辣大腸麵線，點餐請三思。',
     price: 120,
-    image: '/images/taiwanese_mee_sua.jpg',
+    image: '/images/handmade_chili.jpg',
     customizations: null
   },
   {
@@ -137,7 +137,7 @@ export const menuItems = [
     name: '要你命2000',
     description: '狂暴雙倍辣！多重麻辣風味加上雙倍滿載配料，痛快淋漓。',
     price: 150,
-    image: '/images/taiwanese_mee_sua.jpg',
+    image: '/images/handmade_chili.jpg',
     customizations: null
   },
   {
@@ -146,7 +146,7 @@ export const menuItems = [
     name: '要你命3000',
     description: '終極死神辣！挑戰您的痛覺與感官極限，龍城最辣至尊王牌！',
     price: 180,
-    image: '/images/taiwanese_mee_sua.jpg',
+    image: '/images/handmade_chili.jpg',
     customizations: null
   },
   {
