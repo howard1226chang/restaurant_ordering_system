@@ -25,6 +25,13 @@ export default function CashierView({ onLogout }) {
   // Modal active item
   const [activeItemForModal, setActiveItemForModal] = useState(null);
 
+  // Discount states
+  const [discountType, setDiscountType] = useState('none'); // 'none', 'percent', 'amount'
+  const [discountValue, setDiscountValue] = useState(0);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Fetch Menu Items from Supabase
   const fetchMenuItems = async () => {
     try {
@@ -49,15 +56,24 @@ export default function CashierView({ onLogout }) {
   // Calculate total price in cart
   const cartTotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
 
+  // Calculate discount amount and final total
+  let discountAmount = 0;
+  if (discountType === 'percent') {
+    discountAmount = Math.round(cartTotal * (discountValue / 100));
+  } else if (discountType === 'amount') {
+    discountAmount = discountValue;
+  }
+  const finalTotal = Math.max(0, cartTotal - discountAmount);
+
   // Calculate change
   useEffect(() => {
     const received = parseFloat(cashReceived) || 0;
-    if (received >= cartTotal) {
-      setChangeAmount(received - cartTotal);
+    if (received >= finalTotal) {
+      setChangeAmount(received - finalTotal);
     } else {
       setChangeAmount(0);
     }
-  }, [cashReceived, cartTotal]);
+  }, [cashReceived, finalTotal]);
 
   // Handle adding product to cart
   const handleProductClick = (item) => {
@@ -133,8 +149,8 @@ export default function CashierView({ onLogout }) {
     }
 
     const received = parseFloat(cashReceived) || 0;
-    if (received < cartTotal) {
-      alert(`實收現金金額不足！還缺 NT$ ${cartTotal - received}`);
+    if (received < finalTotal) {
+      alert(`實收現金金額不足！還缺 NT$ ${finalTotal - received}`);
       return;
     }
 
@@ -155,6 +171,14 @@ export default function CashierView({ onLogout }) {
     }
     const serialNum = `A-${String(count + 1).padStart(3, '0')}`;
 
+    // Format discount remarks
+    let discountDetail = '';
+    if (discountType === 'percent') {
+      discountDetail = ` [折價: ${(10 - discountValue/10)}折, 折抵 $${discountAmount}]`;
+    } else if (discountType === 'amount') {
+      discountDetail = ` [折抵 $${discountValue}]`;
+    }
+
     try {
       const { data: dbOrders, error: insertError } = await supabase.from('orders').insert([{
         order_number: serialNum,
@@ -170,9 +194,9 @@ export default function CashierView({ onLogout }) {
           customerPhone: '',
           pickupTime: '',
           paymentMethod: 'cash',
-          remarks: `${remarks.trim()} [櫃檯現場收銀]`
+          remarks: `${remarks.trim()}${discountDetail} [櫃檯現場收銀]`
         },
-        total: cartTotal,
+        total: finalTotal,
         type: orderType,
         table_number: orderType === 'dine-in' ? tableNumber : null,
         status: 'received',
@@ -185,7 +209,7 @@ export default function CashierView({ onLogout }) {
       setLatestOrder({
         ...createdOrder,
         cashReceived: received,
-        changeAmount: received - cartTotal
+        changeAmount: received - finalTotal
       });
       setViewState('success');
     } catch (err) {
@@ -202,10 +226,17 @@ export default function CashierView({ onLogout }) {
     setCustName('');
     setViewState('pos');
     setLatestOrder(null);
+    setDiscountType('none');
+    setDiscountValue(0);
+    setSearchQuery('');
   };
 
-  // Filter items by category
-  const filteredMenuItems = menuItems.filter(item => item.category === activeCategory);
+  // Filter items by category and search query
+  const filteredMenuItems = menuItems.filter(item => {
+    const matchesCategory = item.category === activeCategory;
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
+    return matchesCategory && matchesSearch;
+  });
 
   return (
     <div style={{
@@ -264,56 +295,95 @@ export default function CashierView({ onLogout }) {
             display: 'flex',
             flexDirection: 'column',
             overflowY: 'auto',
-            padding: '20px 24px',
+            padding: '16px 20px',
             borderRight: '1px solid var(--border)'
           }}>
-            {/* Category selection tabs */}
+            {/* Search and Category Row */}
             <div style={{
               display: 'flex',
               gap: '12px',
-              marginBottom: '20px'
+              marginBottom: '16px',
+              flexWrap: 'wrap',
+              alignItems: 'center'
             }}>
-              <button
-                onClick={() => setActiveCategory('mee-sua')}
+              {/* Search input */}
+              <input
+                type="text"
+                placeholder="🔍 搜尋品項..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
-                  padding: '10px 20px',
-                  fontSize: '0.85rem',
-                  fontWeight: 'bold',
+                  flex: 1,
+                  minWidth: '150px',
+                  padding: '8px 12px',
                   borderRadius: 'var(--radius-sm)',
-                  border: '1px solid',
-                  borderColor: activeCategory === 'mee-sua' ? 'var(--primary)' : 'var(--border)',
-                  backgroundColor: activeCategory === 'mee-sua' ? 'var(--primary)' : 'var(--bg-card)',
-                  color: activeCategory === 'mee-sua' ? 'white' : 'var(--text-main)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                🍜 招牌麵線
-              </button>
-              <button
-                onClick={() => setActiveCategory('specialties')}
-                style={{
-                  padding: '10px 20px',
+                  border: '1px solid var(--border)',
                   fontSize: '0.85rem',
-                  fontWeight: 'bold',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid',
-                  borderColor: activeCategory === 'specialties' ? 'var(--primary)' : 'var(--border)',
-                  backgroundColor: activeCategory === 'specialties' ? 'var(--primary)' : 'var(--bg-card)',
-                  color: activeCategory === 'specialties' ? 'white' : 'var(--text-main)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
+                  backgroundColor: 'var(--bg-card)',
+                  color: 'var(--text-main)'
                 }}
-              >
-                🔥 特色小吃
-              </button>
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  style={{
+                    border: 'none',
+                    background: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    marginRight: '8px'
+                  }}
+                >
+                  清除
+                </button>
+              )}
+
+              {/* Category tabs */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => setActiveCategory('mee-sua')}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '0.85rem',
+                    fontWeight: 'bold',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid',
+                    borderColor: activeCategory === 'mee-sua' ? 'var(--primary)' : 'var(--border)',
+                    backgroundColor: activeCategory === 'mee-sua' ? 'var(--primary)' : 'var(--bg-card)',
+                    color: activeCategory === 'mee-sua' ? 'white' : 'var(--text-main)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  🍜 招牌麵線
+                </button>
+                <button
+                  onClick={() => setActiveCategory('specialties')}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '0.85rem',
+                    fontWeight: 'bold',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid',
+                    borderColor: activeCategory === 'specialties' ? 'var(--primary)' : 'var(--border)',
+                    backgroundColor: activeCategory === 'specialties' ? 'var(--primary)' : 'var(--bg-card)',
+                    color: activeCategory === 'specialties' ? 'white' : 'var(--text-main)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  🔥 特色小吃
+                </button>
+              </div>
             </div>
 
-            {/* Menu Grid */}
+            {/* Menu Grid - Highly Compact for iPad */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-              gap: '16px'
+              gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))',
+              gap: '12px'
             }}>
               {filteredMenuItems.map(item => (
                 <div 
@@ -340,7 +410,7 @@ export default function CashierView({ onLogout }) {
                     e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
                   }}
                 >
-                  <div style={{ height: '110px', width: '100%', overflow: 'hidden', borderBottom: '1px solid var(--border)', position: 'relative' }}>
+                  <div style={{ height: '85px', width: '100%', overflow: 'hidden', borderBottom: '1px solid var(--border)', position: 'relative' }}>
                     <img 
                       src={item.image} 
                       alt={item.name} 
@@ -352,33 +422,33 @@ export default function CashierView({ onLogout }) {
                     {item.customizations && (
                       <span style={{
                         position: 'absolute',
-                        top: '6px',
-                        right: '6px',
-                        fontSize: '0.6rem',
+                        top: '4px',
+                        right: '4px',
+                        fontSize: '0.55rem',
                         fontWeight: 'bold',
-                        backgroundColor: 'rgba(255, 107, 53, 0.9)',
+                        backgroundColor: 'rgba(255, 107, 53, 0.95)',
                         color: 'white',
-                        padding: '2px 6px',
-                        borderRadius: '4px'
+                        padding: '1px 4px',
+                        borderRadius: '3px'
                       }}>
-                        可客製
+                        客製
                       </span>
                     )}
                   </div>
-                  <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '8px' }}>
-                    <h3 style={{ fontSize: '0.85rem', fontWeight: 'bold', margin: 0, color: 'var(--text-main)' }}>{item.name}</h3>
+                  <div style={{ padding: '8px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '6px' }}>
+                    <h3 style={{ fontSize: '0.8rem', fontWeight: 'bold', margin: 0, color: 'var(--text-main)', lineHeight: '1.2' }}>{item.name}</h3>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: '800', color: 'var(--primary)' }}>NT$ {item.price}</span>
+                      <span style={{ fontSize: '0.8rem', fontWeight: '800', color: 'var(--primary)' }}>${item.price}</span>
                       <span style={{
-                        width: '22px',
-                        height: '22px',
+                        width: '18px',
+                        height: '18px',
                         borderRadius: '50%',
                         backgroundColor: 'rgba(255, 107, 53, 0.1)',
                         color: 'var(--primary)',
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
-                        fontSize: '0.9rem',
+                        fontSize: '0.8rem',
                         fontWeight: 'bold'
                       }}>+</span>
                     </div>
@@ -390,7 +460,7 @@ export default function CashierView({ onLogout }) {
 
           {/* Right Panel: Transaction Cart & Checkout */}
           <div style={{
-            width: '420px',
+            width: '360px',
             backgroundColor: 'var(--bg-card)',
             display: 'flex',
             flexDirection: 'column',
@@ -400,12 +470,23 @@ export default function CashierView({ onLogout }) {
             <div style={{
               flex: 1,
               overflowY: 'auto',
-              padding: '20px',
+              padding: '16px',
               borderBottom: '1px solid var(--border)'
             }}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid var(--border)', paddingBottom: '10px', margin: '0 0 12px 0', display: 'flex', justifyContent: 'space-between' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid var(--border)', paddingBottom: '10px', margin: '0 0 12px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>🛒 點餐清單</span>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{cart.length} 項商品</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>{cart.length} 項</span>
+                  {cart.length > 0 && (
+                    <button 
+                      type="button" 
+                      onClick={() => { if(confirm("確定要清空點餐清單嗎？")) setCart([]); }}
+                      style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: '0.75rem', cursor: 'pointer', padding: 0, fontWeight: 'bold' }}
+                    >
+                      🧹 清空
+                    </button>
+                  )}
+                </div>
               </h2>
 
               {cart.length === 0 ? (
@@ -569,18 +650,47 @@ export default function CashierView({ onLogout }) {
                 />
               </div>
 
-              {/* Total display */}
+              {/* Total & Discount display */}
               <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '1.05rem',
-                fontWeight: '800',
                 borderTop: '1px dashed var(--border)',
                 paddingTop: '10px',
-                marginTop: '4px'
+                marginTop: '4px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px'
               }}>
-                <span>應收金額:</span>
-                <span style={{ color: 'var(--primary)' }}>NT$ {cartTotal}</span>
+                {/* Discount Select */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>折扣折讓</label>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <button type="button" onClick={() => { setDiscountType('percent'); setDiscountValue(5); }} style={{ flex: 1, padding: '5px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: discountType === 'percent' && discountValue === 5 ? 'var(--primary)' : 'var(--bg-card)', color: discountType === 'percent' && discountValue === 5 ? 'white' : 'var(--text-main)', cursor: 'pointer', fontWeight: 'bold' }}>95折</button>
+                    <button type="button" onClick={() => { setDiscountType('percent'); setDiscountValue(10); }} style={{ flex: 1, padding: '5px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: discountType === 'percent' && discountValue === 10 ? 'var(--primary)' : 'var(--bg-card)', color: discountType === 'percent' && discountValue === 10 ? 'white' : 'var(--text-main)', cursor: 'pointer', fontWeight: 'bold' }}>9折</button>
+                    <button type="button" onClick={() => { setDiscountType('percent'); setDiscountValue(15); }} style={{ flex: 1, padding: '5px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: discountType === 'percent' && discountValue === 15 ? 'var(--primary)' : 'var(--bg-card)', color: discountType === 'percent' && discountValue === 15 ? 'white' : 'var(--text-main)', cursor: 'pointer', fontWeight: 'bold' }}>85折</button>
+                    <button type="button" onClick={() => {
+                      const amt = prompt("請輸入折讓金額 (元)：");
+                      if (amt !== null && amt !== '') {
+                        setDiscountType('amount');
+                        setDiscountValue(parseInt(amt) || 0);
+                      }
+                    }} style={{ flex: 1, padding: '5px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: discountType === 'amount' ? 'var(--primary)' : 'var(--bg-card)', color: discountType === 'amount' ? 'white' : 'var(--text-main)', cursor: 'pointer', fontWeight: 'bold' }}>折抵 $</button>
+                    <button type="button" onClick={() => { setDiscountType('none'); setDiscountValue(0); }} style={{ padding: '5px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #ef4444', color: '#ef4444', backgroundColor: 'rgba(239,68,68,0.05)', cursor: 'pointer', fontWeight: 'bold' }}>清除</button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  <span>商品小計:</span>
+                  <span>NT$ {cartTotal}</span>
+                </div>
+                {discountType !== 'none' && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#ef4444' }}>
+                    <span>折扣折讓:</span>
+                    <span>- NT$ {discountAmount}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: '800', borderTop: '1px dashed var(--border)', paddingTop: '6px' }}>
+                  <span>應收金額:</span>
+                  <span style={{ color: 'var(--primary)' }}>NT$ {finalTotal}</span>
+                </div>
               </div>
 
               {/* Cash input and Change calculations */}
@@ -615,9 +725,10 @@ export default function CashierView({ onLogout }) {
               {/* Quick Cash Buttons */}
               <div style={{
                 display: 'flex',
-                gap: '8px',
+                gap: '6px',
                 flexWrap: 'wrap'
               }}>
+                <button type="button" onClick={() => setCashReceived(String(finalTotal))} style={{ flex: 2, padding: '6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #16a34a', color: '#16a34a', backgroundColor: 'rgba(22,163,74,0.05)', cursor: 'pointer', fontWeight: 'bold' }}>剛好收 $ {finalTotal}</button>
                 <button type="button" onClick={() => handleQuickCash(100)} style={{ flex: 1, padding: '6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', cursor: 'pointer' }}>+$100</button>
                 <button type="button" onClick={() => handleQuickCash(500)} style={{ flex: 1, padding: '6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', cursor: 'pointer' }}>+$500</button>
                 <button type="button" onClick={() => handleQuickCash(1000)} style={{ flex: 1, padding: '6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', cursor: 'pointer' }}>+$1000</button>
