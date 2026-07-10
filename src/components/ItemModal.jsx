@@ -154,11 +154,7 @@ export default function ItemModal({ item, onClose, onAddToCart, condimentsAvaila
         </div>
 
         <form onSubmit={handleSubmit} className="modal-body">
-          <img src={item.image} alt={item.name} className="modal-hero-img" onError={(e) => {
-            e.target.style.display = 'none'; // hide if not loaded
-          }} />
-
-          <div className="modal-item-info">
+          <div className="modal-item-info" style={{ marginTop: '0' }}>
             <h2>{item.name}</h2>
             <p>{item.description}</p>
           </div>
@@ -242,25 +238,46 @@ export default function ItemModal({ item, onClose, onAddToCart, condimentsAvaila
 
               return (
                 <div className="option-group" key={groupKey}>
-                  <div className="option-group-title">
+                  <div className="option-group-title" style={{ marginBottom: '8px' }}>
                     <span>{customGroup.title}</span>
                   </div>
-                  <div className="condiments-grid">
-                    {availableOptions.map((opt) => (
-                      <div className="condiment-select-wrapper" key={opt.name}>
-                        <label>{opt.name}</label>
-                        <select
-                          value={selectedDropdowns[groupKey]?.[opt.name] || opt.default}
-                          onChange={(e) => handleDropdownChange(groupKey, opt.name, e.target.value)}
-                        >
-                          {opt.choices.map((choice) => (
-                            <option key={choice} value={choice}>
-                              {choice}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {availableOptions.map((opt) => {
+                      const selectedVal = selectedDropdowns[groupKey]?.[opt.name] || opt.default;
+                      return (
+                        <div key={opt.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>{opt.name}</label>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                            {opt.choices.map((choice) => {
+                              const isSelected = selectedVal === choice;
+                              return (
+                                <button
+                                  key={choice}
+                                  type="button"
+                                  onClick={() => handleDropdownChange(groupKey, opt.name, choice)}
+                                  style={{
+                                    flex: 1,
+                                    padding: '8px 10px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 'bold',
+                                    borderRadius: '6px',
+                                    border: '1px solid',
+                                    borderColor: isSelected ? 'var(--primary)' : 'var(--border)',
+                                    backgroundColor: isSelected ? 'var(--primary)' : 'var(--bg-card)',
+                                    color: isSelected ? '#ffffff' : 'var(--text-main)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.1s ease',
+                                    textAlign: 'center'
+                                  }}
+                                >
+                                  {choice}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );

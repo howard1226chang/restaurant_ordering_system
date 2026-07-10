@@ -289,187 +289,218 @@ export default function CashierView({ onLogout }) {
           overflow: 'hidden',
           height: 'calc(100vh - 57px)'
         }}>
-          {/* Left Panel: Menu Item Grid (No images, no search, no tab switching) */}
+          {/* Left Panel: Menu Item Grid with Giant Switch Tabs */}
           <div style={{
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            overflowY: 'auto',
-            padding: '24px',
+            overflowY: 'hidden',
+            padding: '20px 24px',
             borderRight: '1px solid var(--border)',
-            gap: '24px'
+            gap: '20px'
           }}>
-            {/* Category 1: Mee-Sua */}
-            <div>
-              <h2 style={{
-                fontSize: '1.1rem',
-                fontWeight: '800',
-                color: 'var(--primary)',
-                margin: '0 0 16px 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                borderBottom: '2px solid rgba(255, 107, 53, 0.1)',
-                paddingBottom: '8px'
-              }}>
-                🍜 招牌麵線 / 主食系列 (8)
-              </h2>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-                gap: '14px'
-              }}>
-                {menuItems.filter(item => item.category === 'mee-sua').map(item => (
-                  <div
-                    key={item.id}
-                    onClick={() => handleProductClick(item)}
-                    style={{
-                      backgroundColor: 'rgba(255, 107, 53, 0.05)',
-                      border: '2px solid rgba(255, 107, 53, 0.3)',
-                      borderRadius: '12px',
-                      padding: '20px 14px',
-                      height: '115px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      boxShadow: 'var(--shadow-sm)',
-                      transition: 'all 0.1s ease',
-                      textAlign: 'center',
-                      position: 'relative'
-                    }}
-                    onPointerDown={(e) => {
-                      e.currentTarget.style.transform = 'scale(0.96)';
-                      e.currentTarget.style.backgroundColor = 'var(--primary)';
-                      e.currentTarget.style.color = '#ffffff';
-                      e.currentTarget.style.borderColor = 'var(--primary)';
-                      const priceSpan = e.currentTarget.querySelector('.price-tag');
-                      if (priceSpan) priceSpan.style.color = '#ffffff';
-                    }}
-                    onPointerUp={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 107, 53, 0.05)';
-                      e.currentTarget.style.color = 'var(--text-main)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 107, 53, 0.3)';
-                      const priceSpan = e.currentTarget.querySelector('.price-tag');
-                      if (priceSpan) priceSpan.style.color = 'var(--primary)';
-                    }}
-                    onPointerLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 107, 53, 0.05)';
-                      e.currentTarget.style.color = 'var(--text-main)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 107, 53, 0.3)';
-                      const priceSpan = e.currentTarget.querySelector('.price-tag');
-                      if (priceSpan) priceSpan.style.color = 'var(--primary)';
-                    }}
-                  >
-                    <div style={{ fontSize: '1.1rem', fontWeight: '800', wordBreak: 'break-all', lineHeight: '1.2' }}>
-                      {item.name}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span className="price-tag" style={{ fontSize: '1.1rem', fontWeight: '900', color: 'var(--primary)', transition: 'color 0.1s ease' }}>
-                        NT$ {item.price}
-                      </span>
-                    </div>
-                    {item.customizations && (
-                      <span style={{
-                        position: 'absolute',
-                        top: '6px',
-                        right: '6px',
-                        fontSize: '0.6rem',
-                        fontWeight: 'bold',
-                        backgroundColor: 'rgba(255, 107, 53, 0.15)',
-                        color: 'var(--primary)',
-                        padding: '1px 5px',
-                        borderRadius: '4px'
-                      }}>
-                        ⚙️ 可客製
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
+            {/* Giant Category switcher tabs */}
+            <div style={{
+              display: 'flex',
+              gap: '16px'
+            }}>
+              <button
+                type="button"
+                onClick={() => setActiveCategory('mee-sua')}
+                style={{
+                  flex: 1,
+                  height: '55px',
+                  fontSize: '1.1rem',
+                  fontWeight: '900',
+                  borderRadius: '10px',
+                  border: '2px solid',
+                  borderColor: activeCategory === 'mee-sua' ? 'var(--primary)' : 'var(--border)',
+                  backgroundColor: activeCategory === 'mee-sua' ? 'var(--primary)' : 'var(--bg-card)',
+                  color: activeCategory === 'mee-sua' ? 'white' : 'var(--text-main)',
+                  cursor: 'pointer',
+                  boxShadow: activeCategory === 'mee-sua' ? 'var(--shadow-md)' : 'none',
+                  transition: 'all 0.15s ease',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                🍜 招牌麵線 / 主食 ({menuItems.filter(i => i.category === 'mee-sua').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveCategory('specialties')}
+                style={{
+                  flex: 1,
+                  height: '55px',
+                  fontSize: '1.1rem',
+                  fontWeight: '900',
+                  borderRadius: '10px',
+                  border: '2px solid',
+                  borderColor: activeCategory === 'specialties' ? '#dc2626' : 'var(--border)',
+                  backgroundColor: activeCategory === 'specialties' ? '#dc2626' : 'var(--bg-card)',
+                  color: activeCategory === 'specialties' ? 'white' : 'var(--text-main)',
+                  cursor: 'pointer',
+                  boxShadow: activeCategory === 'specialties' ? 'var(--shadow-md)' : 'none',
+                  transition: 'all 0.15s ease',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                🔥 特色小吃 / 辣系列 ({menuItems.filter(i => i.category === 'specialties').length})
+              </button>
             </div>
 
-            {/* Category 2: Specialties */}
-            <div>
-              <h2 style={{
-                fontSize: '1.1rem',
-                fontWeight: '800',
-                color: '#dc2626',
-                margin: '0 0 16px 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                borderBottom: '2px solid rgba(220, 38, 38, 0.1)',
-                paddingBottom: '8px'
-              }}>
-                🔥 特色小吃 / 辣系列 (4)
-              </h2>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-                gap: '14px'
-              }}>
-                {menuItems.filter(item => item.category === 'specialties').map(item => (
-                  <div
-                    key={item.id}
-                    onClick={() => handleProductClick(item)}
-                    style={{
-                      backgroundColor: 'rgba(220, 38, 38, 0.05)',
-                      border: '2px solid rgba(220, 38, 38, 0.3)',
-                      borderRadius: '12px',
-                      padding: '20px 14px',
-                      height: '115px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      boxShadow: 'var(--shadow-sm)',
-                      transition: 'all 0.1s ease',
-                      textAlign: 'center',
-                      position: 'relative'
-                    }}
-                    onPointerDown={(e) => {
-                      e.currentTarget.style.transform = 'scale(0.96)';
-                      e.currentTarget.style.backgroundColor = '#dc2626';
-                      e.currentTarget.style.color = '#ffffff';
-                      e.currentTarget.style.borderColor = '#dc2626';
-                      const priceSpan = e.currentTarget.querySelector('.price-tag');
-                      if (priceSpan) priceSpan.style.color = '#ffffff';
-                    }}
-                    onPointerUp={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.05)';
-                      e.currentTarget.style.color = 'var(--text-main)';
-                      e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)';
-                      const priceSpan = e.currentTarget.querySelector('.price-tag');
-                      if (priceSpan) priceSpan.style.color = '#dc2626';
-                    }}
-                    onPointerLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.05)';
-                      e.currentTarget.style.color = 'var(--text-main)';
-                      e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)';
-                      const priceSpan = e.currentTarget.querySelector('.price-tag');
-                      if (priceSpan) priceSpan.style.color = '#dc2626';
-                    }}
-                  >
-                    <div style={{ fontSize: '1.1rem', fontWeight: '800', wordBreak: 'break-all', lineHeight: '1.2' }}>
-                      {item.name}
+            {/* Giant Grid Container - filling height */}
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              paddingBottom: '10px'
+            }}>
+              {activeCategory === 'mee-sua' ? (
+                /* Mee-sua: 8 items, 2 columns x 4 rows */
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: '16px',
+                  height: '100%'
+                }}>
+                  {menuItems.filter(item => item.category === 'mee-sua').map(item => (
+                    <div
+                      key={item.id}
+                      onClick={() => handleProductClick(item)}
+                      style={{
+                        backgroundColor: 'rgba(255, 107, 53, 0.05)',
+                        border: '3px solid rgba(255, 107, 53, 0.3)',
+                        borderRadius: '16px',
+                        padding: '24px 16px',
+                        height: '145px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        boxShadow: 'var(--shadow-md)',
+                        transition: 'all 0.1s ease',
+                        textAlign: 'center',
+                        position: 'relative'
+                      }}
+                      onPointerDown={(e) => {
+                        e.currentTarget.style.transform = 'scale(0.96)';
+                        e.currentTarget.style.backgroundColor = 'var(--primary)';
+                        e.currentTarget.style.color = '#ffffff';
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                        const priceSpan = e.currentTarget.querySelector('.price-tag');
+                        if (priceSpan) priceSpan.style.color = '#ffffff';
+                      }}
+                      onPointerUp={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 107, 53, 0.05)';
+                        e.currentTarget.style.color = 'var(--text-main)';
+                        e.currentTarget.style.borderColor = 'rgba(255, 107, 53, 0.3)';
+                        const priceSpan = e.currentTarget.querySelector('.price-tag');
+                        if (priceSpan) priceSpan.style.color = 'var(--primary)';
+                      }}
+                      onPointerLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 107, 53, 0.05)';
+                        e.currentTarget.style.color = 'var(--text-main)';
+                        e.currentTarget.style.borderColor = 'rgba(255, 107, 53, 0.3)';
+                        const priceSpan = e.currentTarget.querySelector('.price-tag');
+                        if (priceSpan) priceSpan.style.color = 'var(--primary)';
+                      }}
+                    >
+                      <div style={{ fontSize: '1.25rem', fontWeight: '900', lineHeight: '1.3' }}>
+                        {item.name}
+                      </div>
+                      <span className="price-tag" style={{ fontSize: '1.25rem', fontWeight: '900', color: 'var(--primary)', transition: 'color 0.1s ease' }}>
+                        NT$ {item.price}
+                      </span>
+                      {item.customizations && (
+                        <span style={{
+                          position: 'absolute',
+                          top: '10px',
+                          right: '10px',
+                          fontSize: '0.65rem',
+                          fontWeight: 'bold',
+                          backgroundColor: 'rgba(255, 107, 53, 0.15)',
+                          color: 'var(--primary)',
+                          padding: '2px 8px',
+                          borderRadius: '6px'
+                        }}>
+                          ⚙️ 可客製
+                        </span>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span className="price-tag" style={{ fontSize: '1.1rem', fontWeight: '900', color: '#dc2626', transition: 'color 0.1s ease' }}>
+                  ))}
+                </div>
+              ) : (
+                /* Specialties: 4 items, 2 columns x 2 rows (Extra Giant Buttons!) */
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: '20px',
+                  height: '100%'
+                }}>
+                  {menuItems.filter(item => item.category === 'specialties').map(item => (
+                    <div
+                      key={item.id}
+                      onClick={() => handleProductClick(item)}
+                      style={{
+                        backgroundColor: 'rgba(220, 38, 38, 0.05)',
+                        border: '3px solid rgba(220, 38, 38, 0.3)',
+                        borderRadius: '18px',
+                        padding: '40px 24px',
+                        height: '290px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        boxShadow: 'var(--shadow-lg)',
+                        transition: 'all 0.1s ease',
+                        textAlign: 'center'
+                      }}
+                      onPointerDown={(e) => {
+                        e.currentTarget.style.transform = 'scale(0.96)';
+                        e.currentTarget.style.backgroundColor = '#dc2626';
+                        e.currentTarget.style.color = '#ffffff';
+                        e.currentTarget.style.borderColor = '#dc2626';
+                        const priceSpan = e.currentTarget.querySelector('.price-tag');
+                        if (priceSpan) priceSpan.style.color = '#ffffff';
+                      }}
+                      onPointerUp={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.05)';
+                        e.currentTarget.style.color = 'var(--text-main)';
+                        e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)';
+                        const priceSpan = e.currentTarget.querySelector('.price-tag');
+                        if (priceSpan) priceSpan.style.color = '#dc2626';
+                      }}
+                      onPointerLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.05)';
+                        e.currentTarget.style.color = 'var(--text-main)';
+                        e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)';
+                        const priceSpan = e.currentTarget.querySelector('.price-tag');
+                        if (priceSpan) priceSpan.style.color = '#dc2626';
+                      }}
+                    >
+                      <div style={{ fontSize: '1.5rem', fontWeight: '900', lineHeight: '1.4' }}>
+                        {item.name}
+                      </div>
+                      <span className="price-tag" style={{ fontSize: '1.5rem', fontWeight: '900', color: '#dc2626', transition: 'color 0.1s ease' }}>
                         NT$ {item.price}
                       </span>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
