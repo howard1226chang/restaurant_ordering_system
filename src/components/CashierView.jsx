@@ -289,172 +289,187 @@ export default function CashierView({ onLogout }) {
           overflow: 'hidden',
           height: 'calc(100vh - 57px)'
         }}>
-          {/* Left Panel: Menu Item Grid */}
+          {/* Left Panel: Menu Item Grid (No images, no search, no tab switching) */}
           <div style={{
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
             overflowY: 'auto',
-            padding: '16px 20px',
-            borderRight: '1px solid var(--border)'
+            padding: '24px',
+            borderRight: '1px solid var(--border)',
+            gap: '24px'
           }}>
-            {/* Search and Category Row */}
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              marginBottom: '16px',
-              flexWrap: 'wrap',
-              alignItems: 'center'
-            }}>
-              {/* Search input */}
-              <input
-                type="text"
-                placeholder="🔍 搜尋品項..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  flex: 1,
-                  minWidth: '150px',
-                  padding: '8px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border)',
-                  fontSize: '0.85rem',
-                  backgroundColor: 'var(--bg-card)',
-                  color: 'var(--text-main)'
-                }}
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  style={{
-                    border: 'none',
-                    background: 'none',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem',
-                    marginRight: '8px'
-                  }}
-                >
-                  清除
-                </button>
-              )}
-
-              {/* Category tabs */}
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => setActiveCategory('mee-sua')}
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '0.85rem',
-                    fontWeight: 'bold',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid',
-                    borderColor: activeCategory === 'mee-sua' ? 'var(--primary)' : 'var(--border)',
-                    backgroundColor: activeCategory === 'mee-sua' ? 'var(--primary)' : 'var(--bg-card)',
-                    color: activeCategory === 'mee-sua' ? 'white' : 'var(--text-main)',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  🍜 招牌麵線
-                </button>
-                <button
-                  onClick={() => setActiveCategory('specialties')}
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '0.85rem',
-                    fontWeight: 'bold',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid',
-                    borderColor: activeCategory === 'specialties' ? 'var(--primary)' : 'var(--border)',
-                    backgroundColor: activeCategory === 'specialties' ? 'var(--primary)' : 'var(--bg-card)',
-                    color: activeCategory === 'specialties' ? 'white' : 'var(--text-main)',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  🔥 特色小吃
-                </button>
-              </div>
-            </div>
-
-            {/* Menu Grid - Highly Compact for iPad */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))',
-              gap: '12px'
-            }}>
-              {filteredMenuItems.map(item => (
-                <div 
-                  key={item.id}
-                  onClick={() => handleProductClick(item)}
-                  style={{
-                    backgroundColor: 'var(--bg-card)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius-md)',
-                    overflow: 'hidden',
-                    cursor: 'pointer',
-                    boxShadow: 'var(--shadow-sm)',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    userSelect: 'none'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-                  }}
-                >
-                  <div style={{ height: '85px', width: '100%', overflow: 'hidden', borderBottom: '1px solid var(--border)', position: 'relative' }}>
-                    <img 
-                      src={item.image} 
-                      alt={item.name} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={(e) => {
-                        e.target.src = '/images/taiwanese_mee_sua.jpg';
-                      }}
-                    />
+            {/* Category 1: Mee-Sua */}
+            <div>
+              <h2 style={{
+                fontSize: '1.1rem',
+                fontWeight: '800',
+                color: 'var(--primary)',
+                margin: '0 0 16px 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                borderBottom: '2px solid rgba(255, 107, 53, 0.1)',
+                paddingBottom: '8px'
+              }}>
+                🍜 招牌麵線 / 主食系列 (8)
+              </h2>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                gap: '14px'
+              }}>
+                {menuItems.filter(item => item.category === 'mee-sua').map(item => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleProductClick(item)}
+                    style={{
+                      backgroundColor: 'rgba(255, 107, 53, 0.05)',
+                      border: '2px solid rgba(255, 107, 53, 0.3)',
+                      borderRadius: '12px',
+                      padding: '20px 14px',
+                      height: '115px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      boxShadow: 'var(--shadow-sm)',
+                      transition: 'all 0.1s ease',
+                      textAlign: 'center',
+                      position: 'relative'
+                    }}
+                    onPointerDown={(e) => {
+                      e.currentTarget.style.transform = 'scale(0.96)';
+                      e.currentTarget.style.backgroundColor = 'var(--primary)';
+                      e.currentTarget.style.color = '#ffffff';
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      const priceSpan = e.currentTarget.querySelector('.price-tag');
+                      if (priceSpan) priceSpan.style.color = '#ffffff';
+                    }}
+                    onPointerUp={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 107, 53, 0.05)';
+                      e.currentTarget.style.color = 'var(--text-main)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 107, 53, 0.3)';
+                      const priceSpan = e.currentTarget.querySelector('.price-tag');
+                      if (priceSpan) priceSpan.style.color = 'var(--primary)';
+                    }}
+                    onPointerLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 107, 53, 0.05)';
+                      e.currentTarget.style.color = 'var(--text-main)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 107, 53, 0.3)';
+                      const priceSpan = e.currentTarget.querySelector('.price-tag');
+                      if (priceSpan) priceSpan.style.color = 'var(--primary)';
+                    }}
+                  >
+                    <div style={{ fontSize: '1.1rem', fontWeight: '800', wordBreak: 'break-all', lineHeight: '1.2' }}>
+                      {item.name}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span className="price-tag" style={{ fontSize: '1.1rem', fontWeight: '900', color: 'var(--primary)', transition: 'color 0.1s ease' }}>
+                        NT$ {item.price}
+                      </span>
+                    </div>
                     {item.customizations && (
                       <span style={{
                         position: 'absolute',
-                        top: '4px',
-                        right: '4px',
-                        fontSize: '0.55rem',
+                        top: '6px',
+                        right: '6px',
+                        fontSize: '0.6rem',
                         fontWeight: 'bold',
-                        backgroundColor: 'rgba(255, 107, 53, 0.95)',
-                        color: 'white',
-                        padding: '1px 4px',
-                        borderRadius: '3px'
+                        backgroundColor: 'rgba(255, 107, 53, 0.15)',
+                        color: 'var(--primary)',
+                        padding: '1px 5px',
+                        borderRadius: '4px'
                       }}>
-                        客製
+                        ⚙️ 可客製
                       </span>
                     )}
                   </div>
-                  <div style={{ padding: '8px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '6px' }}>
-                    <h3 style={{ fontSize: '0.8rem', fontWeight: 'bold', margin: 0, color: 'var(--text-main)', lineHeight: '1.2' }}>{item.name}</h3>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: '800', color: 'var(--primary)' }}>${item.price}</span>
-                      <span style={{
-                        width: '18px',
-                        height: '18px',
-                        borderRadius: '50%',
-                        backgroundColor: 'rgba(255, 107, 53, 0.1)',
-                        color: 'var(--primary)',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        fontSize: '0.8rem',
-                        fontWeight: 'bold'
-                      }}>+</span>
+                ))}
+              </div>
+            </div>
+
+            {/* Category 2: Specialties */}
+            <div>
+              <h2 style={{
+                fontSize: '1.1rem',
+                fontWeight: '800',
+                color: '#dc2626',
+                margin: '0 0 16px 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                borderBottom: '2px solid rgba(220, 38, 38, 0.1)',
+                paddingBottom: '8px'
+              }}>
+                🔥 特色小吃 / 辣系列 (4)
+              </h2>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                gap: '14px'
+              }}>
+                {menuItems.filter(item => item.category === 'specialties').map(item => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleProductClick(item)}
+                    style={{
+                      backgroundColor: 'rgba(220, 38, 38, 0.05)',
+                      border: '2px solid rgba(220, 38, 38, 0.3)',
+                      borderRadius: '12px',
+                      padding: '20px 14px',
+                      height: '115px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      boxShadow: 'var(--shadow-sm)',
+                      transition: 'all 0.1s ease',
+                      textAlign: 'center',
+                      position: 'relative'
+                    }}
+                    onPointerDown={(e) => {
+                      e.currentTarget.style.transform = 'scale(0.96)';
+                      e.currentTarget.style.backgroundColor = '#dc2626';
+                      e.currentTarget.style.color = '#ffffff';
+                      e.currentTarget.style.borderColor = '#dc2626';
+                      const priceSpan = e.currentTarget.querySelector('.price-tag');
+                      if (priceSpan) priceSpan.style.color = '#ffffff';
+                    }}
+                    onPointerUp={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.05)';
+                      e.currentTarget.style.color = 'var(--text-main)';
+                      e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)';
+                      const priceSpan = e.currentTarget.querySelector('.price-tag');
+                      if (priceSpan) priceSpan.style.color = '#dc2626';
+                    }}
+                    onPointerLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.05)';
+                      e.currentTarget.style.color = 'var(--text-main)';
+                      e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)';
+                      const priceSpan = e.currentTarget.querySelector('.price-tag');
+                      if (priceSpan) priceSpan.style.color = '#dc2626';
+                    }}
+                  >
+                    <div style={{ fontSize: '1.1rem', fontWeight: '800', wordBreak: 'break-all', lineHeight: '1.2' }}>
+                      {item.name}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span className="price-tag" style={{ fontSize: '1.1rem', fontWeight: '900', color: '#dc2626', transition: 'color 0.1s ease' }}>
+                        NT$ {item.price}
+                      </span>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
 
