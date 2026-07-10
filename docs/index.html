@@ -3,114 +3,88 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>龍城麵線 - 點餐網關</title>
+  <title>龍城麵線 點餐網關</title>
   <style>
-    :root {
-      --primary: #ff6b35;
-      --bg: #0f172a;
-      --text: #f8fafc;
-    }
     body {
-      margin: 0;
-      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #fcf8f6;
+      color: #4a3e3d;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
-      background-color: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      height: 100vh;
+      margin: 0;
       text-align: center;
     }
-    .container {
-      max-width: 400px;
-      padding: 20px;
-    }
-    .logo {
-      font-size: 3rem;
-      margin-bottom: 20px;
-      animation: pulse 2s infinite ease-in-out;
-    }
-    h2 {
-      font-size: 1.25rem;
-      margin: 10px 0;
-      font-weight: 600;
-    }
-    p {
-      font-size: 0.85rem;
-      color: #94a3b8;
-      margin-bottom: 30px;
-    }
     .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(255, 107, 53, 0.1);
+      border: 4px solid rgba(255, 107, 53, 0.1);
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
-      border-top-color: var(--primary);
+      border-left-color: #ff6b35;
       animation: spin 1s linear infinite;
-      margin: 0 auto 30px auto;
-    }
-    .fallback-links {
-      font-size: 0.8rem;
-      border-top: 1px solid #334155;
-      padding-top: 20px;
-    }
-    .fallback-links a {
-      color: var(--primary);
-      text-decoration: none;
-      margin: 0 10px;
-    }
-    .fallback-links a:hover {
-      text-decoration: underline;
+      margin-bottom: 24px;
     }
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.15); }
+    h2 {
+      margin: 0 0 8px 0;
+      color: #ff6b35;
+    }
+    p {
+      font-size: 0.9rem;
+      color: #887d7b;
+      margin: 0;
     }
   </style>
-</head>
-<body>
-  <div class="container">
-    <div class="logo">🥢</div>
-    <h2>龍城麵線</h2>
-    <p>正在為您連接最快速的點餐伺服器，請稍候...</p>
-    <div class="spinner"></div>
-    
-    <div class="fallback-links">
-      <div style="margin-bottom: 8px;">若長時間未自動跳轉，請點選下方連結：</div>
-      <a href="https://dragon.twabc.com" id="primary-link">主要站點 (推薦)</a> | 
-      <a href="https://dragon1.twabc.com" id="backup-link">備用站點</a>
-    </div>
-  </div>
-
   <script>
-    const primaryUrl = 'https://dragon.twabc.com';
-    const backupUrl = 'https://dragon1.twabc.com';
-    const search = window.location.search;
+    // 網域名稱配置
+    const MAIN_SITE = "https://dragon.twabc.com" + window.location.search;   // 主站 (Netlify)
+    const BACKUP_SITE = "https://dragon1.twabc.com" + window.location.search; // 備援站 (Vercel)
+    const TIMEOUT_MS = 3000; // 等待主站回應的超時時間 (3秒)
 
-    // Update manual links with query parameters
-    document.getElementById('primary-link').href = primaryUrl + search;
-    document.getElementById('backup-link').href = backupUrl + search;
+    let isRedirected = false;
 
-    // Failover detection logic
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1800); // 1.8s timeout
+    // 跳轉至備援站
+    function redirectToBackup() {
+      if (!isRedirected) {
+        isRedirected = true;
+        console.log("主站回應超時，自動轉往備援站...");
+        window.location.replace(BACKUP_SITE);
+      }
+    }
 
-    // We fetch a small file (favicon.svg) from the primary server to test connectivity
-    fetch(primaryUrl + '/favicon.svg', { mode: 'no-cors', signal: controller.signal })
+    // 跳轉至主站
+    function redirectToMain() {
+      if (!isRedirected) {
+        isRedirected = true;
+        window.location.replace(MAIN_SITE);
+      }
+    }
+
+    // 設定定時器：如果 3 秒內主站沒回應，自動判定主站離線並跳轉至備援站
+    const timeoutTimer = setTimeout(() => {
+      redirectToBackup();
+    }, TIMEOUT_MS);
+
+    // 在背景發送一個輕量請求測試主站連線
+    fetch(MAIN_SITE, { mode: 'no-cors', cache: 'no-store' })
       .then(() => {
-        clearTimeout(timeoutId);
-        window.location.replace(primaryUrl + search);
+        clearTimeout(timeoutTimer);
+        redirectToMain();
       })
       .catch((err) => {
-        clearTimeout(timeoutId);
-        console.warn("Primary server offline, redirecting to backup...", err);
-        window.location.replace(backupUrl + search);
+        clearTimeout(timeoutTimer);
+        redirectToBackup();
       });
   </script>
+</head>
+<body>
+  <div class="spinner"></div>
+  <h2>正在連線至龍城麵線點餐系統...</h2>
+  <p>系統正在為您偵測並分配最快的分流節點，請稍候。</p>
 </body>
 </html>
