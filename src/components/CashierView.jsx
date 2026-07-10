@@ -655,46 +655,38 @@ export default function CashierView({ onLogout }) {
                 </button>
               </div>
 
-              {/* Table / Customer Details Inputs */}
-              {orderType === 'dine-in' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {/* Table Selection for Dine-in */}
+              {orderType === 'dine-in' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>內用桌號 *</label>
-                  <select
-                    value={tableNumber}
-                    onChange={(e) => setTableNumber(e.target.value)}
-                    style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '0.8rem', backgroundColor: 'var(--bg-card)', color: 'var(--text-main)' }}
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                      <option key={n} value={String(n)}>{n} 號桌</option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>顧客名稱 (選填)</label>
-                    <input 
-                      type="text" 
-                      placeholder="如：林先生" 
-                      value={custName}
-                      onChange={(e) => setCustName(e.target.value)}
-                      style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '0.8rem', backgroundColor: 'var(--bg-card)', color: 'var(--text-main)' }}
-                    />
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => {
+                      const isSelected = tableNumber === String(n);
+                      return (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setTableNumber(String(n))}
+                          style={{
+                            padding: '6px 0',
+                            fontSize: '0.8rem',
+                            fontWeight: 'bold',
+                            borderRadius: '6px',
+                            border: '1px solid',
+                            borderColor: isSelected ? 'var(--primary)' : 'var(--border)',
+                            backgroundColor: isSelected ? 'var(--primary)' : 'var(--bg-card)',
+                            color: isSelected ? 'white' : 'var(--text-main)',
+                            cursor: 'pointer',
+                            transition: 'all 0.1s ease'
+                          }}
+                        >
+                          {n}桌
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
-
-              {/* Remarks */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>訂單備註 (選填)</label>
-                <input 
-                  type="text" 
-                  placeholder="如：不要辣、香菜多" 
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '0.8rem', backgroundColor: 'var(--bg-card)', color: 'var(--text-main)' }}
-                />
-              </div>
 
               {/* Total & Discount display */}
               <div style={{
@@ -744,11 +736,11 @@ export default function CashierView({ onLogout }) {
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>實收現金 (NT$) *</label>
                   <input 
-                    type="number" 
-                    placeholder="輸入實收金額"
-                    value={cashReceived}
-                    onChange={(e) => setCashReceived(e.target.value)}
-                    style={{ padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '0.9rem', fontWeight: 'bold', backgroundColor: 'var(--bg-card)', color: 'var(--text-main)' }}
+                    type="text" 
+                    placeholder="點選下方鍵盤輸入"
+                    value={cashReceived ? `NT$ ${cashReceived}` : ''}
+                    readOnly
+                    style={{ padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '0.9rem', fontWeight: 'bold', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', textAlign: 'right' }}
                     required
                   />
                 </div>
@@ -761,24 +753,88 @@ export default function CashierView({ onLogout }) {
                     fontSize: '0.9rem',
                     fontWeight: '800',
                     color: changeAmount > 0 ? '#16a34a' : 'var(--text-main)',
-                    backgroundColor: 'var(--bg-input)'
+                    backgroundColor: 'var(--bg-input)',
+                    textAlign: 'right'
                   }}>
                     NT$ {changeAmount}
                   </div>
                 </div>
               </div>
 
-              {/* Quick Cash Buttons */}
+              {/* POS Built-in Cash Preset Buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>快速選定鈔票金額</label>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  <button type="button" onClick={() => setCashReceived(String(finalTotal))} style={{ flex: 2, padding: '6px 0', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #16a34a', color: '#16a34a', backgroundColor: 'rgba(22,163,74,0.05)', cursor: 'pointer', fontWeight: 'bold' }}>剛好收 NT$ {finalTotal}</button>
+                  <button type="button" onClick={() => setCashReceived('50')} style={{ flex: 1, padding: '6px 0', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', cursor: 'pointer', fontWeight: 'bold' }}>$50</button>
+                  <button type="button" onClick={() => setCashReceived('100')} style={{ flex: 1, padding: '6px 0', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', cursor: 'pointer', fontWeight: 'bold' }}>$100</button>
+                  <button type="button" onClick={() => setCashReceived('200')} style={{ flex: 1, padding: '6px 0', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', cursor: 'pointer', fontWeight: 'bold' }}>$200</button>
+                  <button type="button" onClick={() => setCashReceived('500')} style={{ flex: 1, padding: '6px 0', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', cursor: 'pointer', fontWeight: 'bold' }}>$500</button>
+                  <button type="button" onClick={() => setCashReceived('1000')} style={{ flex: 1, padding: '6px 0', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', cursor: 'pointer', fontWeight: 'bold' }}>$1000</button>
+                </div>
+              </div>
+
+              {/* Built-in Visual Keypad (No system keyboard popup) */}
               <div style={{
-                display: 'flex',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: '6px',
-                flexWrap: 'wrap'
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                padding: '8px',
+                backgroundColor: 'var(--bg-card)'
               }}>
-                <button type="button" onClick={() => setCashReceived(String(finalTotal))} style={{ flex: 2, padding: '6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #16a34a', color: '#16a34a', backgroundColor: 'rgba(22,163,74,0.05)', cursor: 'pointer', fontWeight: 'bold' }}>剛好收 $ {finalTotal}</button>
-                <button type="button" onClick={() => handleQuickCash(100)} style={{ flex: 1, padding: '6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', cursor: 'pointer' }}>+$100</button>
-                <button type="button" onClick={() => handleQuickCash(500)} style={{ flex: 1, padding: '6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', cursor: 'pointer' }}>+$500</button>
-                <button type="button" onClick={() => handleQuickCash(1000)} style={{ flex: 1, padding: '6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', cursor: 'pointer' }}>+$1000</button>
-                <button type="button" onClick={handleClearCash} style={{ padding: '6px 10px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #ef4444', color: '#ef4444', backgroundColor: 'rgba(239,68,68,0.05)', cursor: 'pointer' }}>清除</button>
+                {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(num => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => {
+                      setCashReceived(prev => {
+                        if (prev === '0') return String(num);
+                        return prev + String(num);
+                      });
+                    }}
+                    style={{ height: '36px', fontSize: '1.05rem', fontWeight: 'bold', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-body)', cursor: 'pointer' }}
+                  >
+                    {num}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCashReceived(prev => {
+                      if (!prev || prev === '0') return '0';
+                      return prev + '0';
+                    });
+                  }}
+                  style={{ height: '36px', fontSize: '1.05rem', fontWeight: 'bold', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-body)', cursor: 'pointer' }}
+                >
+                  0
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCashReceived(prev => {
+                      if (!prev || prev === '0') return '0';
+                      return prev + '00';
+                    });
+                  }}
+                  style={{ height: '36px', fontSize: '1.05rem', fontWeight: 'bold', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-body)', cursor: 'pointer' }}
+                >
+                  00
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCashReceived(prev => {
+                      if (prev.length <= 1) return '';
+                      return prev.slice(0, -1);
+                    });
+                  }}
+                  style={{ height: '36px', fontSize: '1.05rem', fontWeight: 'bold', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-body)', cursor: 'pointer', color: '#ef4444' }}
+                >
+                  ⌫
+                </button>
               </div>
 
               {/* Submit transaction */}
