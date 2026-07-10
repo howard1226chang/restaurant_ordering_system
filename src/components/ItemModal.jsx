@@ -145,150 +145,171 @@ export default function ItemModal({ item, onClose, onAddToCart, condimentsAvaila
     onClose();
   };
 
+  const renderOptionGroup = (groupKey, customGroup) => {
+    if (customGroup.type === 'radio') {
+      return (
+        <div className="option-group" key={groupKey} style={{ margin: 0 }}>
+          <div className="option-group-title" style={{ marginBottom: '6px' }}>
+            <span style={{ fontWeight: 'bold' }}>{customGroup.title}</span>
+            <span className="option-required-tag">必選</span>
+          </div>
+          <div className="option-choices" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {customGroup.options.map((opt) => (
+              <div
+                key={opt.label}
+                className={`choice-row ${selectedRadioOptions[groupKey] === opt.label ? 'selected' : ''}`}
+                onClick={() => handleRadioChange(groupKey, opt.label)}
+                style={{ padding: '8px 12px', borderRadius: '8px' }}
+              >
+                <div className="choice-input-label">
+                  <input
+                    type="radio"
+                    name={`radio-${groupKey}`}
+                    checked={selectedRadioOptions[groupKey] === opt.label}
+                    onChange={() => handleRadioChange(groupKey, opt.label)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <span>{opt.label}</span>
+                </div>
+                <span className="choice-price-diff plus" style={{ color: 'var(--primary)', fontWeight: 'bold' }}>
+                  NT$ {item.price + opt.priceChange}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (customGroup.type === 'checkbox') {
+      return (
+        <div className="option-group" key={groupKey} style={{ margin: 0 }}>
+          <div className="option-group-title" style={{ marginBottom: '6px' }}>
+            <span style={{ fontWeight: 'bold' }}>{customGroup.title}</span>
+          </div>
+          <div className="option-choices" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+            {customGroup.options.map((opt) => {
+              const isChecked = !!(selectedCheckboxes[groupKey] && selectedCheckboxes[groupKey][opt.label]);
+              return (
+                <div
+                  key={opt.label}
+                  className={`choice-row ${isChecked ? 'selected' : ''}`}
+                  onClick={() => handleCheckboxChange(groupKey, opt.label)}
+                  style={{ padding: '8px 10px', borderRadius: '8px', margin: 0 }}
+                >
+                  <div className="choice-input-label">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => handleCheckboxChange(groupKey, opt.label)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span>{opt.label}</span>
+                  </div>
+                  {opt.priceChange > 0 && (
+                    <span className="choice-price-diff plus" style={{ color: 'var(--primary)', fontWeight: 'bold' }}>+${opt.priceChange}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    if (customGroup.type === 'selects') {
+      const availableOptions = customGroup.options.filter(
+        opt => !condimentsAvailability || condimentsAvailability[opt.name] !== false
+      );
+
+      if (availableOptions.length === 0) return null;
+
+      return (
+        <div className="option-group" key={groupKey} style={{ margin: 0 }}>
+          <div className="option-group-title" style={{ marginBottom: '6px' }}>
+            <span style={{ fontWeight: 'bold' }}>{customGroup.title}</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {availableOptions.map((opt) => {
+              const selectedVal = selectedDropdowns[groupKey]?.[opt.name] || opt.default;
+              return (
+                <div key={opt.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>{opt.name}</label>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {opt.choices.map((choice) => {
+                      const isSelected = selectedVal === choice;
+                      return (
+                        <button
+                          key={choice}
+                          type="button"
+                          onClick={() => handleDropdownChange(groupKey, opt.name, choice)}
+                          style={{
+                            flex: 1,
+                            padding: '6px 8px',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold',
+                            borderRadius: '6px',
+                            border: '1px solid',
+                            borderColor: isSelected ? 'var(--primary)' : 'var(--border)',
+                            backgroundColor: isSelected ? 'var(--primary)' : 'var(--bg-card)',
+                            color: isSelected ? '#ffffff' : 'var(--text-main)',
+                            cursor: 'pointer',
+                            transition: 'all 0.1s ease',
+                            textAlign: 'center'
+                          }}
+                        >
+                          {choice}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>餐點客製化</h3>
+    <div className="modal-backdrop" onClick={onClose} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '760px', maxWidth: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: '20px', borderRadius: '16px', overflow: 'hidden' }}>
+        <div className="modal-header" style={{ paddingBottom: '10px' }}>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>餐點客製化</h3>
           <button className="close-btn" onClick={onClose}>&times;</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-body">
-          <div className="modal-item-info" style={{ marginTop: '0' }}>
-            <h2>{item.name}</h2>
-            <p>{item.description}</p>
+        <form onSubmit={handleSubmit} className="modal-body" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', padding: '10px 0' }}>
+          <div className="modal-item-info" style={{ marginTop: '0', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: '900', color: 'var(--primary)', margin: '0' }}>{item.name}</h2>
           </div>
 
-          {item.customizations && Object.entries(item.customizations).map(([groupKey, customGroup]) => {
-            if (customGroup.type === 'radio') {
-              return (
-                <div className="option-group" key={groupKey}>
-                  <div className="option-group-title">
-                    <span>{customGroup.title}</span>
-                    <span className="option-required-tag">必選</span>
-                  </div>
-                  <div className="option-choices">
-                    {customGroup.options.map((opt) => (
-                      <div
-                        key={opt.label}
-                        className={`choice-row ${selectedRadioOptions[groupKey] === opt.label ? 'selected' : ''}`}
-                        onClick={() => handleRadioChange(groupKey, opt.label)}
-                      >
-                        <div className="choice-input-label">
-                          <input
-                            type="radio"
-                            name={`radio-${groupKey}`}
-                            checked={selectedRadioOptions[groupKey] === opt.label}
-                            onChange={() => handleRadioChange(groupKey, opt.label)}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <span>{opt.label}</span>
-                        </div>
-                        <span className="choice-price-diff plus" style={{ color: 'var(--primary)', fontWeight: 'bold' }}>
-                          NT$ {item.price + opt.priceChange}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            }
+          {/* Two column grid layout */}
+          <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+            {/* Left Column: size, addons, etc. (types radio, checkbox) */}
+            <div style={{ flex: 1.1, minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {item.customizations && Object.entries(item.customizations)
+                .filter(([_, customGroup]) => customGroup.type === 'radio' || customGroup.type === 'checkbox')
+                .map(([groupKey, customGroup]) => renderOptionGroup(groupKey, customGroup))}
+            </div>
 
-            if (customGroup.type === 'checkbox') {
-              return (
-                <div className="option-group" key={groupKey}>
-                  <div className="option-group-title">
-                    <span>{customGroup.title}</span>
-                  </div>
-                  <div className="option-choices">
-                    {customGroup.options.map((opt) => {
-                      const isChecked = !!(selectedCheckboxes[groupKey] && selectedCheckboxes[groupKey][opt.label]);
-                      return (
-                        <div
-                          key={opt.label}
-                          className={`choice-row ${isChecked ? 'selected' : ''}`}
-                          onClick={() => handleCheckboxChange(groupKey, opt.label)}
-                        >
-                          <div className="choice-input-label">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleCheckboxChange(groupKey, opt.label)}
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            <span>{opt.label}</span>
-                          </div>
-                          {opt.priceChange > 0 && (
-                            <span className="choice-price-diff plus">+${opt.priceChange}</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            }
+            {/* Right Column: condiments (type selects) */}
+            <div style={{ flex: 0.9, minWidth: '280px', display: 'flex', flexDirection: 'column', gap: '14px', borderLeft: '1px solid var(--border)', paddingLeft: '24px' }}>
+              {item.customizations && Object.entries(item.customizations)
+                .filter(([_, customGroup]) => customGroup.type === 'selects')
+                .map(([groupKey, customGroup]) => renderOptionGroup(groupKey, customGroup))}
+            </div>
+          </div>
+        </form>
 
-            if (customGroup.type === 'selects') {
-              const availableOptions = customGroup.options.filter(
-                opt => !condimentsAvailability || condimentsAvailability[opt.name] !== false
-              );
-
-              if (availableOptions.length === 0) return null;
-
-              return (
-                <div className="option-group" key={groupKey}>
-                  <div className="option-group-title" style={{ marginBottom: '8px' }}>
-                    <span>{customGroup.title}</span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {availableOptions.map((opt) => {
-                      const selectedVal = selectedDropdowns[groupKey]?.[opt.name] || opt.default;
-                      return (
-                        <div key={opt.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>{opt.name}</label>
-                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                            {opt.choices.map((choice) => {
-                              const isSelected = selectedVal === choice;
-                              return (
-                                <button
-                                  key={choice}
-                                  type="button"
-                                  onClick={() => handleDropdownChange(groupKey, opt.name, choice)}
-                                  style={{
-                                    flex: 1,
-                                    padding: '8px 10px',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 'bold',
-                                    borderRadius: '6px',
-                                    border: '1px solid',
-                                    borderColor: isSelected ? 'var(--primary)' : 'var(--border)',
-                                    backgroundColor: isSelected ? 'var(--primary)' : 'var(--bg-card)',
-                                    color: isSelected ? '#ffffff' : 'var(--text-main)',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.1s ease',
-                                    textAlign: 'center'
-                                  }}
-                                >
-                                  {choice}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            }
-
-            return null;
-          })}
-
-          <div className="qty-row">
-            <span className="qty-label">選購數量</span>
-            <div className="qty-counter">
+        <div className="modal-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', paddingBottom: '0' }}>
+          {/* Quantity Counter moved to footer next to button for space saving! */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>數量</span>
+            <div className="qty-counter" style={{ margin: 0 }}>
               <button
                 type="button"
                 className="qty-btn"
@@ -296,7 +317,7 @@ export default function ItemModal({ item, onClose, onAddToCart, condimentsAvaila
               >
                 -
               </button>
-              <span className="qty-val">{quantity}</span>
+              <span className="qty-val" style={{ width: '30px', textAlign: 'center' }}>{quantity}</span>
               <button
                 type="button"
                 className="qty-btn"
@@ -306,10 +327,8 @@ export default function ItemModal({ item, onClose, onAddToCart, condimentsAvaila
               </button>
             </div>
           </div>
-        </form>
 
-        <div className="modal-footer">
-          <button className="add-to-cart-btn" onClick={handleSubmit}>
+          <button className="add-to-cart-btn" onClick={handleSubmit} style={{ flex: 1, maxWidth: '350px', margin: 0 }}>
             <span>加入購物車</span>
             <span>總計 NT$ {totalPrice}</span>
           </button>
