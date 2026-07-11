@@ -361,12 +361,11 @@ export default function CashierView({ onLogout }) {
               paddingBottom: '10px'
             }}>
               {activeCategory === 'mee-sua' ? (
-                /* Mee-sua: 8 items, 2 columns x 4 rows */
+                /* Mee-sua: 8 items, 3 columns x 3 rows */
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(2, 1fr)',
-                  gap: '16px',
-                  height: '100%'
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '12px'
                 }}>
                   {menuItems.filter(item => item.category === 'mee-sua').map(item => (
                     <div
@@ -374,17 +373,17 @@ export default function CashierView({ onLogout }) {
                       onClick={() => handleProductClick(item)}
                       style={{
                         backgroundColor: 'rgba(255, 107, 53, 0.05)',
-                        border: '3px solid rgba(255, 107, 53, 0.3)',
-                        borderRadius: '16px',
-                        padding: '24px 16px',
-                        height: '145px',
+                        border: '2px solid rgba(255, 107, 53, 0.3)',
+                        borderRadius: '12px',
+                        padding: '16px 10px',
+                        height: '100px',
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         cursor: 'pointer',
                         userSelect: 'none',
-                        boxShadow: 'var(--shadow-md)',
+                        boxShadow: 'var(--shadow-sm)',
                         transition: 'all 0.1s ease',
                         textAlign: 'center',
                         position: 'relative'
@@ -414,37 +413,36 @@ export default function CashierView({ onLogout }) {
                         if (priceSpan) priceSpan.style.color = 'var(--primary)';
                       }}
                     >
-                      <div style={{ fontSize: '1.25rem', fontWeight: '900', lineHeight: '1.3' }}>
+                      <div style={{ fontSize: '1.05rem', fontWeight: '800', lineHeight: '1.2' }}>
                         {item.name}
                       </div>
-                      <span className="price-tag" style={{ fontSize: '1.25rem', fontWeight: '900', color: 'var(--primary)', transition: 'color 0.1s ease' }}>
+                      <span className="price-tag" style={{ fontSize: '1.05rem', fontWeight: '900', color: 'var(--primary)', transition: 'color 0.1s ease' }}>
                         NT$ {item.price}
                       </span>
                       {item.customizations && (
                         <span style={{
                           position: 'absolute',
-                          top: '10px',
-                          right: '10px',
-                          fontSize: '0.65rem',
+                          top: '6px',
+                          right: '6px',
+                          fontSize: '0.55rem',
                           fontWeight: 'bold',
-                          backgroundColor: 'rgba(255, 107, 53, 0.15)',
+                          backgroundColor: 'rgba(255, 107, 53, 0.12)',
                           color: 'var(--primary)',
-                          padding: '2px 8px',
-                          borderRadius: '6px'
+                          padding: '1px 5px',
+                          borderRadius: '4px'
                         }}>
-                          ⚙️ 可客製
+                          ⚙️客製
                         </span>
                       )}
                     </div>
                   ))}
                 </div>
               ) : (
-                /* Specialties: 4 items, 2 columns x 2 rows (Extra Giant Buttons!) */
+                /* Specialties: 4 items, 3 columns x 2 rows */
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(2, 1fr)',
-                  gap: '20px',
-                  height: '100%'
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '12px'
                 }}>
                   {menuItems.filter(item => item.category === 'specialties').map(item => (
                     <div
@@ -452,17 +450,17 @@ export default function CashierView({ onLogout }) {
                       onClick={() => handleProductClick(item)}
                       style={{
                         backgroundColor: 'rgba(220, 38, 38, 0.05)',
-                        border: '3px solid rgba(220, 38, 38, 0.3)',
-                        borderRadius: '18px',
-                        padding: '40px 24px',
-                        height: '290px',
+                        border: '2px solid rgba(220, 38, 38, 0.3)',
+                        borderRadius: '12px',
+                        padding: '16px 10px',
+                        height: '100px',
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         cursor: 'pointer',
                         userSelect: 'none',
-                        boxShadow: 'var(--shadow-lg)',
+                        boxShadow: 'var(--shadow-sm)',
                         transition: 'all 0.1s ease',
                         textAlign: 'center'
                       }}
@@ -491,10 +489,10 @@ export default function CashierView({ onLogout }) {
                         if (priceSpan) priceSpan.style.color = '#dc2626';
                       }}
                     >
-                      <div style={{ fontSize: '1.5rem', fontWeight: '900', lineHeight: '1.4' }}>
+                      <div style={{ fontSize: '1.05rem', fontWeight: '800', lineHeight: '1.2' }}>
                         {item.name}
                       </div>
-                      <span className="price-tag" style={{ fontSize: '1.5rem', fontWeight: '900', color: '#dc2626', transition: 'color 0.1s ease' }}>
+                      <span className="price-tag" style={{ fontSize: '1.05rem', fontWeight: '900', color: '#dc2626', transition: 'color 0.1s ease' }}>
                         NT$ {item.price}
                       </span>
                     </div>
