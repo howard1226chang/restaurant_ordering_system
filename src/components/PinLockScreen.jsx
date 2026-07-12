@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 export default function PinLockScreen({ expectedPin, onSuccess, title, subtitle }) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe] = useState(false);
 
   // Handle number click
   const handleNumClick = (num) => {
@@ -197,25 +197,6 @@ export default function PinLockScreen({ expectedPin, onSuccess, title, subtitle 
           </button>
         </div>
 
-        {/* Remember Me Checkbox */}
-        <label style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-          fontSize: '0.75rem',
-          color: 'var(--text-muted)',
-          cursor: 'pointer',
-          marginTop: '6px',
-          userSelect: 'none'
-        }}>
-          <input 
-            type="checkbox" 
-            checked={rememberMe} 
-            onChange={(e) => setRememberMe(e.target.checked)}
-            style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
-          />
-          記住登入狀態（一週內免輸入）
-        </label>
       </div>
     </div>
   );
