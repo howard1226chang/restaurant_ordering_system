@@ -27,17 +27,9 @@ export default function KitchenView({ onBackToDemo, onLogout }) {
   const [prodImage, setProdImage] = useState('');
   const [prodCustomization, setProdCustomization] = useState('mee-sua-standard'); // 'mee-sua-standard', 'none'
 
-  // Purchase Ledger & Date Selection States
-  const [purchases, setPurchases] = useState([]);
-  const [isPurchasesOnCloud, setIsPurchasesOnCloud] = useState(false);
-  const [selectedBookkeepingDate, setSelectedBookkeepingDate] = useState(new Date().toISOString().split('T')[0]);
-
-  // Form states for adding purchases
-  const [purchaseVendor, setPurchaseVendor] = useState('');
-  const [purchaseItemName, setPurchaseItemName] = useState('滷大腸');
-  const [purchaseQty, setPurchaseQty] = useState('');
-  const [purchaseCost, setPurchaseCost] = useState('');
-  const [purchaseStatus, setPurchaseStatus] = useState('paid');
+  // UI management dropdown states
+  const [selectedManageType, setSelectedManageType] = useState('menu-item'); // 'menu-item', 'condiment', 'add-new'
+  const [selectedItemIdToManage, setSelectedItemIdToManage] = useState('');
 
   // Fetch Menu Items from Supabase
   const fetchMenuItems = async () => {
@@ -86,38 +78,10 @@ export default function KitchenView({ onBackToDemo, onLogout }) {
     }
   };
 
-  // Fetch Purchases from Supabase (with fallback to LocalStorage if table doesn't exist)
-  const fetchPurchases = async () => {
-    try {
-      const { data, error } = await supabase.from('purchases').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      if (data) {
-        const mapped = data.map(p => ({
-          id: String(p.id),
-          date: p.date,
-          time: p.time,
-          vendor: p.vendor,
-          itemName: p.item_name,
-          quantity: p.quantity,
-          cost: Number(p.cost),
-          status: p.status
-        }));
-        setPurchases(mapped);
-        setIsPurchasesOnCloud(true);
-      }
-    } catch (err) {
-      console.warn("Supabase purchases table query failed or table not found (falling back to LocalStorage):", err.message);
-      const savedPurchases = JSON.parse(localStorage.getItem('restaurant_purchases') || '[]');
-      setPurchases(savedPurchases);
-      setIsPurchasesOnCloud(false);
-    }
-  };
-
-  // Load orders, purchases, settings on mount
+  // Load orders, settings on mount
   useEffect(() => {
     fetchMenuItems();
     fetchOrders();
-    fetchPurchases();
 
     const savedCondiments = localStorage.getItem('condiments_availability');
     if (savedCondiments) {
@@ -148,16 +112,9 @@ export default function KitchenView({ onBackToDemo, onLogout }) {
       })
       .subscribe();
 
-    const purchasesChannel = supabase.channel('kitchen-purchases')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'purchases' }, () => {
-        fetchPurchases();
-      })
-      .subscribe();
-
     return () => {
       supabase.removeChannel(ordersChannel);
       supabase.removeChannel(menuChannel);
-      supabase.removeChannel(purchasesChannel);
     };
   }, []);
 
@@ -407,106 +364,6 @@ export default function KitchenView({ onBackToDemo, onLogout }) {
     window.dispatchEvent(new Event('storage'));
   };
 
-  const handleAddPurchase = async (e) => {
-    e.preventDefault();
-    if (!purchaseVendor.trim() || !purchaseQty.trim() || !purchaseCost) return;
-
-    const time = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-    const costNum = Number(purchaseCost);
-
-    if (isPurchasesOnCloud) {
-      try {
-        const { error } = await supabase.from('purchases').insert([{
-          purchase_id: `PUR-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
-          date: selectedBookkeepingDate,
-          time,
-          vendor: purchaseVendor,
-          item_name: purchaseItemName,
-          quantity: purchaseQty,
-          cost: costNum,
-          status: purchaseStatus
-        }]);
-        if (error) throw error;
-        fetchPurchases();
-      } catch (err) {
-        console.error("Failed to add purchase to Supabase:", err);
-        alert("登錄進貨資料至雲端失敗！");
-      }
-    } else {
-      const newPurchase = {
-        id: `PUR-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
-        date: selectedBookkeepingDate,
-        time,
-        vendor: purchaseVendor,
-        itemName: purchaseItemName,
-        quantity: purchaseQty,
-        cost: costNum,
-        status: purchaseStatus
-      };
-      const updated = [newPurchase, ...purchases];
-      setPurchases(updated);
-      localStorage.setItem('restaurant_purchases', JSON.stringify(updated));
-      window.dispatchEvent(new Event('storage'));
-    }
-
-    // Clear form inputs
-    setPurchaseVendor('');
-    setPurchaseQty('');
-    setPurchaseCost('');
-  };
-
-  const handleDeletePurchase = async (id) => {
-    if (window.confirm('確定要刪除這筆進貨支出嗎？')) {
-      if (isPurchasesOnCloud) {
-        try {
-          const { error } = await supabase.from('purchases').delete().eq('id', id);
-          if (error) throw error;
-          fetchPurchases();
-        } catch (err) {
-          console.error("Failed to delete purchase from Supabase:", err);
-          alert("刪除進貨資料失敗！");
-        }
-      } else {
-        const updated = purchases.filter(p => p.id !== id);
-        setPurchases(updated);
-        localStorage.setItem('restaurant_purchases', JSON.stringify(updated));
-        window.dispatchEvent(new Event('storage'));
-      }
-    }
-  };
-
-  const handleExportCSV = () => {
-    if (completedOrders.length === 0) {
-      alert('該日尚無已結案的交易明細可供匯出！');
-      return;
-    }
-    
-    // Add UTF-8 BOM for correct Chinese display in Excel
-    let csvContent = "\uFEFF";
-    csvContent += "時間,流水號,類型,顧客姓名/桌號,實收金額(NT$),付款方式,購買明細\n";
-    
-    completedOrders.forEach(order => {
-      const time = order.time;
-      const serial = order.serialNum || order.id.slice(-6);
-      const type = order.type === 'dine-in' ? '內用' : '外帶';
-      const name = order.customerName.replace(/,/g, ' '); // Avoid CSV column shifting
-      const total = order.total;
-      const payment = order.paymentMethod === 'online' ? '線上已付' : '現金付款';
-      const itemsStr = order.items.map(item => `${item.name}x${item.quantity}`).join(' | ');
-      
-      csvContent += `${time},${serial},${type},${name},${total},${payment},"${itemsStr}"\n`;
-    });
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `龍城麵線_帳目明細_${selectedBookkeepingDate}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   // Filter orders by status
   const pendingOrders = orders.filter(o => o.status === 'received');
   const preparingOrders = orders.filter(o => o.status === 'preparing');
@@ -522,54 +379,10 @@ export default function KitchenView({ onBackToDemo, onLogout }) {
 
   // Force tick state update every 30s to refresh elapsed minutes
   const [, setTick] = useState(0);
-  const [showBookkeeping, setShowBookkeeping] = useState(false);
   useEffect(() => {
     const timer = setInterval(() => setTick(t => t + 1), 30000);
     return () => clearInterval(timer);
   }, []);
-
-  // Calculate Bookkeeping data for the selected date
-  const completedOrders = orders.filter(o => {
-    const orderDate = new Date(o.timestamp).toISOString().split('T')[0];
-    return o.status === 'completed' && orderDate === selectedBookkeepingDate;
-  });
-  
-  const totalRevenue = completedOrders.reduce((sum, o) => sum + o.total, 0);
-  const onlineRevenue = completedOrders
-    .filter(o => o.paymentMethod === 'online')
-    .reduce((sum, o) => sum + o.total, 0);
-  const cashRevenue = totalRevenue - onlineRevenue;
-
-  const totalDineIn = completedOrders.filter(o => o.type === 'dine-in').length;
-  const totalTakeout = completedOrders.length - totalDineIn;
-
-  // Calculate purchases for the selected date
-  const purchasesForDate = purchases.filter(p => p.date === selectedBookkeepingDate);
-  const totalPurchasesCost = purchasesForDate.reduce((sum, p) => sum + p.cost, 0);
-  const estimatedNetProfit = totalRevenue - totalPurchasesCost;
-
-  // Item counts for the selected date
-  const itemCounts = {};
-  const addonCounts = {};
-  completedOrders.forEach(o => {
-    o.items.forEach(item => {
-      // count main items
-      itemCounts[item.name] = (itemCounts[item.name] || 0) + item.quantity;
-      // count add-ons if any
-      if (item.selections && item.selections.checkboxes) {
-        Object.entries(item.selections.checkboxes).forEach(([groupKey, checks]) => {
-          Object.entries(checks).forEach(([addonName, isChecked]) => {
-            if (isChecked) {
-              addonCounts[addonName] = (addonCounts[addonName] || 0) + item.quantity;
-            }
-          });
-        });
-      }
-    });
-  });
-
-  const sortedItems = Object.entries(itemCounts).sort((a, b) => b[1] - a[1]);
-  const sortedAddons = Object.entries(addonCounts).sort((a, b) => b[1] - a[1]);
 
   const handleHomeClick = () => {
     const params = new URLSearchParams(window.location.search);
@@ -670,295 +483,275 @@ export default function KitchenView({ onBackToDemo, onLogout }) {
         </div>
       </header>
 
-      {/* Condiment Supply Settings Panel */}
+      {/* ⚙️ 後台設定與供應管理 (下拉選單緊湊版) */}
       <div style={{
         margin: '20px 24px 0 24px',
-        padding: '14px 20px',
-        backgroundColor: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-md)',
-        boxShadow: 'var(--shadow-sm)',
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '16px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '1.4rem' }}>⚙️</span>
-          <div>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>佐料供應管理 (前台勾選控制)</h4>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>取消勾選的佐料將會立即在客戶端點餐介面中隱藏。</p>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          {Object.entries(condimentsAvailability).map(([name, isAvailable]) => (
-            <label 
-              key={name} 
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '6px 14px',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-full)',
-                backgroundColor: isAvailable ? 'rgba(255, 107, 53, 0.05)' : 'var(--bg-input)',
-                borderColor: isAvailable ? 'var(--primary)' : 'var(--border)',
-                fontWeight: isAvailable ? '600' : 'normal',
-                cursor: 'pointer',
-                transition: 'var(--transition)',
-                fontSize: '0.8rem',
-                userSelect: 'none'
-              }}
-            >
-              <input 
-                type="checkbox" 
-                checked={isAvailable} 
-                onChange={() => handleCondimentToggle(name)}
-                style={{ cursor: 'pointer', width: '14px', height: '14px', accentColor: 'var(--primary)' }}
-              />
-              <span>{name} {isAvailable ? '🟢 供應中' : '🔴 已售罄'}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* 📦 菜單與單品供應管理 看板 */}
-      <div style={{
-        margin: '16px 24px 0 24px',
         padding: '16px 20px',
         backgroundColor: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: 'var(--radius-md)',
-        boxShadow: 'var(--shadow-sm)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px'
+        boxShadow: 'var(--shadow-sm)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '1.4rem' }}>📦</span>
-          <div>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>菜單與單品供應管理 (動態新增、編輯與下架)</h4>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>管理店內上架之所有商品。今日下架或刪除之品項，將即時同步於顧客點餐網頁。</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '1.4rem' }}>⚙️</span>
+            <div>
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>後台系統設定與供應控制</h4>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0 }}>菜單單品上架、佐料供應開關與餐點管理</p>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <select 
+              value={selectedManageType} 
+              onChange={(e) => {
+                setSelectedManageType(e.target.value);
+                setSelectedItemIdToManage('');
+                handleCancelEdit();
+              }}
+              style={{
+                padding: '6px 12px',
+                fontSize: '0.8rem',
+                borderRadius: '6px',
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--bg-body)',
+                color: 'var(--text-main)',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                height: '34px'
+              }}
+            >
+              <option value="menu-item">📋 單品供應與編輯管理</option>
+              <option value="condiment">🌿 前台佐料供應管理</option>
+              <option value="add-new">➕ 新增自訂單品上架</option>
+            </select>
+
+            {selectedManageType === 'menu-item' && (
+              <select
+                value={selectedItemIdToManage}
+                onChange={(e) => {
+                  setSelectedItemIdToManage(e.target.value);
+                  handleCancelEdit();
+                }}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '0.8rem',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border)',
+                  backgroundColor: 'var(--bg-body)',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  height: '34px',
+                  maxWidth: '200px'
+                }}
+              >
+                <option value="">-- 選擇要管理的品項 --</option>
+                {menuItems.map(item => (
+                  <option key={item.id} value={item.id}>{item.name} (${item.price})</option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 
-        {/* 商品表格清單 */}
-        <div style={{ overflowX: 'auto', borderTop: '1px solid var(--border)', paddingTop: '12px', marginTop: '4px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '8px 12px' }}>品項名稱</th>
-                <th style={{ padding: '8px 12px' }}>分類</th>
-                <th style={{ padding: '8px 12px' }}>價格 (NT$)</th>
-                <th style={{ padding: '8px 12px' }}>客製規格</th>
-                <th style={{ padding: '8px 12px' }}>今日供應狀態</th>
-                <th style={{ padding: '8px 12px', textAlign: 'center' }}>操作管理</th>
-              </tr>
-            </thead>
-            <tbody>
-              {menuItems.map(item => {
+        <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+          {selectedManageType === 'menu-item' && (
+            selectedItemIdToManage ? (
+              (() => {
+                const item = menuItems.find(i => String(i.id) === selectedItemIdToManage);
+                if (!item) return <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>品項載入錯誤</p>;
                 const isAvailable = menuItemsAvailability[item.id] !== false;
+                
                 return (
-                  <tr key={item.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background-color 0.2s' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: '600' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <img 
-                          src={item.image} 
-                          alt="" 
-                          style={{ width: '28px', height: '28px', borderRadius: '4px', objectFit: 'cover', border: '1px solid var(--border)' }} 
-                          onError={(e) => { e.target.src = '/images/taiwanese_mee_sua.jpg'; }}
-                        />
-                        <span>{item.name}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', backgroundColor: 'var(--bg-body)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <img 
+                        src={item.image} 
+                        alt="" 
+                        style={{ width: '48px', height: '48px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--border)' }}
+                        onError={(e) => { e.target.src = '/images/taiwanese_mee_sua.jpg'; }}
+                      />
+                      <div>
+                        <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: '0 0 4px 0' }}>{item.name}</h5>
+                        <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          <span>分類: {item.category === 'mee-sua' ? '🍜 招牌麵線' : '🔥 特色產品'}</span>
+                          <span>單價: <strong>NT$ {item.price}</strong></span>
+                          <span>客製: {item.customizations ? '📋 標準規格' : '🚫 僅選數量'}</span>
+                        </div>
                       </div>
-                    </td>
-                    <td style={{ padding: '8px 12px' }}>
-                      {item.category === 'mee-sua' ? '🍜 招牌麵線' : '🔥 特色產品'}
-                    </td>
-                    <td style={{ padding: '8px 12px', fontWeight: 'bold' }}>
-                      ${item.price}
-                    </td>
-                    <td style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>
-                      {item.customizations ? '📋 標準麵線客製' : '🚫 僅選數量'}
-                    </td>
-                    <td style={{ padding: '8px 12px' }}>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none' }}>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none', backgroundColor: 'var(--bg-card)', padding: '6px 12px', borderRadius: '20px', border: '1px solid var(--border)' }}>
                         <input 
                           type="checkbox" 
                           checked={isAvailable} 
                           onChange={() => handleMenuItemToggle(item.id)}
                           style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
                         />
-                        <span style={{ fontSize: '0.75rem', fontWeight: isAvailable ? '600' : 'normal', color: isAvailable ? '#16a34a' : 'var(--text-muted)' }}>
-                          {isAvailable ? '🟢 上架供應' : '🔴 完售下架'}
+                        <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: isAvailable ? '#16a34a' : 'var(--text-muted)' }}>
+                          {isAvailable ? '🟢 上架供應中' : '🔴 完售下架中'}
                         </span>
                       </label>
-                    </td>
-                    <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', justifyContent: 'center', gap: '6px' }}>
-                        <button 
-                          onClick={() => handleStartEdit(item)}
-                          style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', color: 'var(--text-main)', cursor: 'pointer' }}
-                        >
-                          📝 編輯
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteProduct(item.id, item.name)}
-                          style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid #ef4444', backgroundColor: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', cursor: 'pointer' }}
-                        >
-                          🗑️ 刪除
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+
+                      <button 
+                        onClick={() => {
+                          handleStartEdit(item);
+                          setSelectedManageType('add-new');
+                        }}
+                        style={{ padding: '6px 14px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid var(--primary)', color: 'var(--primary)', backgroundColor: 'transparent', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        📝 編輯修改
+                      </button>
+
+                      <button 
+                        onClick={() => {
+                          handleDeleteProduct(item.id, item.name);
+                          setSelectedItemIdToManage('');
+                        }}
+                        style={{ padding: '6px 14px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid #ef4444', color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.05)', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        🗑️ 刪除單品
+                      </button>
+                    </div>
+                  </div>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
+              })()
+            ) : (
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '16px 0', margin: 0 }}>
+                💡 請點擊上方右側下拉選單，選取要管理供應狀態或編輯的單品項目。
+              </p>
+            )
+          )}
 
-        {/* 新增 / 編輯商品表單 */}
-        <div id="product-edit-form" style={{ marginTop: '16px', padding: '20px', border: '1px dashed var(--border)', borderRadius: 'var(--radius-md)', backgroundColor: 'rgba(0,0,0,0.015)' }}>
-          <h4 style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {editingItemId ? '📝 編輯商品內容' : '➕ 新增自訂商品上架'}
-            {editingItemId && <span style={{ fontSize: '0.7rem', color: 'var(--primary)', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(255,107,53,0.1)' }}>編輯中</span>}
-          </h4>
-          
-          <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-            {/* 左側表單輸入欄位 */}
-            <form onSubmit={handleSaveProduct} style={{ flex: 1, minWidth: '300px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品名稱 *</label>
-                <input 
-                  type="text" 
-                  placeholder="例如：古早味滷肉飯" 
-                  value={prodName} 
-                  onChange={(e) => setProdName(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)' }}
-                  required
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品分類 *</label>
-                <select 
-                  value={prodCategory} 
-                  onChange={(e) => setProdCategory(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', cursor: 'pointer' }}
-                >
-                  <option value="mee-sua">🍜 招牌麵線</option>
-                  <option value="specialties">🔥 特色產品</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品單價 (NT$) *</label>
-                <input 
-                  type="number" 
-                  placeholder="例如：45" 
-                  value={prodPrice} 
-                  onChange={(e) => setProdPrice(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)' }}
-                  min="0"
-                  required
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>客製規格選項 *</label>
-                <select 
-                  value={prodCustomization} 
-                  onChange={(e) => setProdCustomization(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', cursor: 'pointer' }}
-                >
-                  <option value="mee-sua-standard">📋 標準麵線客製 (可選大小碗、加料與調味)</option>
-                  <option value="none">🚫 無客製規格 (前台僅可選擇選購數量)</option>
-                </select>
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品圖片網址 (選填，留空將套用預設圖片)</label>
-                <input 
-                  type="text" 
-                  placeholder="例如：/images/mixed_mee_sua.jpg 或網路圖片網址" 
-                  value={prodImage} 
-                  onChange={(e) => setProdImage(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)' }}
-                />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品說明 (選填)</label>
-                <textarea 
-                  placeholder="例如：秘製陳年滷汁，手工慢火細熬，香味四溢..." 
-                  value={prodDescription} 
-                  onChange={(e) => setProdDescription(e.target.value)}
-                  rows="2"
-                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', resize: 'vertical', fontFamily: 'inherit' }}
-                />
-              </div>
-              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
-                {editingItemId && (
-                  <button 
-                    type="button" 
-                    onClick={handleCancelEdit}
-                    style={{ padding: '8px 16px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', color: 'var(--text-main)', cursor: 'pointer' }}
+          {selectedManageType === 'condiment' && (
+            <div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px', marginTop: 0 }}>
+                提示：在此切換的佐料狀態會即時生效，前台顧客點單或櫃檯 POS 點餐時將不顯示已下架的佐料按鈕。
+              </p>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                {Object.entries(condimentsAvailability).map(([name, isAvailable]) => (
+                  <label 
+                    key={name} 
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-full)',
+                      backgroundColor: isAvailable ? 'rgba(255, 107, 53, 0.05)' : 'var(--bg-input)',
+                      borderColor: isAvailable ? 'var(--primary)' : 'var(--border)',
+                      fontWeight: isAvailable ? '600' : 'normal',
+                      cursor: 'pointer',
+                      transition: 'var(--transition)',
+                      fontSize: '0.8rem',
+                      userSelect: 'none'
+                    }}
                   >
-                    ❌ 取消編輯
-                  </button>
-                )}
-                <button 
-                  type="submit" 
-                  style={{ padding: '8px 20px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: 'var(--primary)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  {editingItemId ? '💾 保存商品修改' : '➕ 新增商品上架'}
-                </button>
-              </div>
-            </form>
-
-            {/* 右側商品卡片即時預覽 (加大、顯眼、對應前台卡片) */}
-            <div style={{
-              width: '240px',
-              flexShrink: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-md)',
-              padding: '16px',
-              backgroundColor: 'var(--bg-card)',
-              boxShadow: 'var(--shadow-md)',
-              alignSelf: 'flex-start'
-            }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'bold', borderBottom: '1px solid var(--border)', paddingBottom: '6px', display: 'block' }}>
-                👁️ 客戶端卡片即時預覽
-              </span>
-              <div style={{ position: 'relative', width: '100%', height: '150px', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                <img 
-                  src={prodImage.trim() || (prodCategory === 'mee-sua' ? '/images/taiwanese_mee_sua.jpg' : '/images/spicy_kimchi.jpg')} 
-                  alt="預覽" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={(e) => {
-                    e.target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&auto=format&fit=crop&q=60';
-                  }}
-                />
-                <div style={{ position: 'absolute', top: '8px', right: '8px', padding: '2px 8px', borderRadius: 'var(--radius-full)', backgroundColor: 'var(--primary)', color: 'white', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                  {prodCategory === 'mee-sua' ? '招牌麵線' : '特色產品'}
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-                <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
-                  {prodName.trim() || '商品名稱'}
-                </h5>
-                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', height: '36px', lineHeight: '1.25' }}>
-                  {prodDescription.trim() || '在此輸入商品說明描述...'}
-                </p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', borderTop: '1px dashed var(--border)', paddingTop: '8px' }}>
-                  <span style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--primary)' }}>
-                    NT$ {prodPrice || '0'}
-                  </span>
-                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', backgroundColor: 'var(--bg-input)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-                    {prodCustomization === 'mee-sua-standard' ? '📋 有客製' : '🚫 僅選數量'}
-                  </span>
-                </div>
+                    <input 
+                      type="checkbox" 
+                      checked={isAvailable} 
+                      onChange={() => handleCondimentToggle(name)}
+                      style={{ cursor: 'pointer', width: '14px', height: '14px', accentColor: 'var(--primary)' }}
+                    />
+                    <span>{name} {isAvailable ? '🟢 正常供應' : '🔴 暫停供應'}</span>
+                  </label>
+                ))}
               </div>
             </div>
-          </div>
+          )}
+
+          {selectedManageType === 'add-new' && (
+            <div style={{ padding: '4px' }}>
+              <h5 style={{ fontSize: '0.85rem', fontWeight: 'bold', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {editingItemId ? '📝 編輯商品內容' : '➕ 新增自訂商品上架'}
+                {editingItemId && <span style={{ fontSize: '0.7rem', color: 'var(--primary)', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(255,107,53,0.1)' }}>編輯狀態</span>}
+              </h5>
+              
+              <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                <form onSubmit={async (e) => {
+                  await handleSaveProduct(e);
+                  setSelectedManageType('menu-item');
+                }} style={{ flex: 1, minWidth: '300px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品名稱 *</label>
+                    <input 
+                      type="text" 
+                      placeholder="例如：古早味大腸飯" 
+                      value={prodName} 
+                      onChange={(e) => setProdName(e.target.value)}
+                      style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)' }}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品分類 *</label>
+                    <select 
+                      value={prodCategory} 
+                      onChange={(e) => setProdCategory(e.target.value)}
+                      style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', cursor: 'pointer' }}
+                    >
+                      <option value="mee-sua">🍜 招牌麵線</option>
+                      <option value="specialties">🔥 特色產品</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品單價 (NT$) *</label>
+                    <input 
+                      type="number" 
+                      placeholder="例如：45" 
+                      value={prodPrice} 
+                      onChange={(e) => setProdPrice(e.target.value)}
+                      style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)' }}
+                      min="0"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>客製規格選項 *</label>
+                    <select 
+                      value={prodCustomization} 
+                      onChange={(e) => setProdCustomization(e.target.value)}
+                      style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', cursor: 'pointer' }}
+                    >
+                      <option value="mee-sua-standard">📋 標準麵線客製 (加料、調味與大/小碗)</option>
+                      <option value="none">🚫 無客製規格 (僅選購數量)</option>
+                    </select>
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--text-muted)' }}>商品圖片網址 (留空將套用分類預設圖)</label>
+                    <input 
+                      type="text" 
+                      placeholder="例如：/images/mixed_mee_sua.jpg" 
+                      value={prodImage} 
+                      onChange={(e) => setProdImage(e.target.value)}
+                      style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)' }}
+                    />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        handleCancelEdit();
+                        setSelectedManageType('menu-item');
+                      }}
+                      style={{ padding: '8px 16px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', color: 'var(--text-main)', cursor: 'pointer' }}
+                    >
+                      ❌ {editingItemId ? '取消編輯' : '取消返回'}
+                    </button>
+                    <button 
+                      type="submit" 
+                      style={{ padding: '8px 20px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: 'none', backgroundColor: 'var(--primary)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
+                    >
+                      {editingItemId ? '💾 保存商品修改' : '➕ 上架商品'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
