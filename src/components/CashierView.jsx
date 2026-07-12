@@ -32,6 +32,25 @@ export default function CashierView({ onLogout }) {
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Closed Dates for Locking
+  const [closedDates, setClosedDates] = useState(() => {
+    return JSON.parse(localStorage.getItem('restaurant_closed_dates') || '[]');
+  });
+
+  const getTodayLocalDate = () => {
+    const d = new Date();
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
+  };
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setClosedDates(JSON.parse(localStorage.getItem('restaurant_closed_dates') || '[]'));
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Fetch Menu Items from Supabase
   const fetchMenuItems = async () => {
     try {
@@ -238,6 +257,88 @@ export default function CashierView({ onLogout }) {
     return matchesCategory && matchesSearch;
   });
 
+  if (closedDates.includes(getTodayLocalDate())) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: 'var(--bg-body)',
+        color: 'var(--text-main)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        padding: '20px'
+      }}>
+        <div style={{
+          maxWidth: '460px',
+          width: '100%',
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          padding: '40px 30px',
+          textAlign: 'center',
+          boxShadow: 'var(--shadow-lg)'
+        }}>
+          <span style={{ fontSize: '3rem' }}>🔒</span>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: '900', margin: '15px 0 8px 0', color: 'var(--text-main)' }}>
+            今日收銀系統已結案鎖定
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '24px' }}>
+            今日 ({getTodayLocalDate()}) 已完成收店結帳。本 POS 系統已關閉服務並安全鎖定，直到明日才會自動解鎖恢復。
+          </p>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              onClick={() => {
+                if (window.confirm("警告：重開帳目後收銀功能將恢復，今日對帳資訊將會重新變動。確定重開嗎？")) {
+                  const pwd = window.prompt("請輸入管理員對帳密碼以重開：");
+                  if (pwd === '8888') {
+                    const updated = closedDates.filter(d => d !== getTodayLocalDate());
+                    setClosedDates(updated);
+                    localStorage.setItem('restaurant_closed_dates', JSON.stringify(updated));
+                    window.dispatchEvent(new Event('storage'));
+                  } else if (pwd !== null) {
+                    alert("密碼錯誤！");
+                  }
+                }
+              }}
+              style={{
+                flex: 1,
+                padding: '10px',
+                fontSize: '0.8rem',
+                borderRadius: '6px',
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--bg-body)',
+                color: 'var(--text-main)',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              🔓 重開帳目
+            </button>
+            {onLogout && (
+              <button 
+                onClick={onLogout}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  fontSize: '0.8rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: 'var(--primary)',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                🚪 登出鎖定
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       display: 'flex',
@@ -263,6 +364,35 @@ export default function CashierView({ onLogout }) {
           <h1 style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: 0 }}>龍城麵線 現場收銀系統 (POS)</h1>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            onClick={() => {
+              if (window.confirm("⚠️ 警告：收店結帳後今日的收銀系統將會關閉鎖定，直到明日才會自動重開。確定進行今日收店結帳嗎？")) {
+                const pwd = window.prompt("請輸入關店密碼以確認收店：");
+                if (pwd === '8888') {
+                  const todayStr = getTodayLocalDate();
+                  const updated = [...closedDates, todayStr];
+                  setClosedDates(updated);
+                  localStorage.setItem('restaurant_closed_dates', JSON.stringify(updated));
+                  window.dispatchEvent(new Event('storage'));
+                  alert("收店結帳成功！今日收銀系統已安全鎖定。");
+                } else if (pwd !== null) {
+                  alert("密碼錯誤，收店失敗！");
+                }
+              }
+            }}
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.8rem',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid #ef4444',
+              backgroundColor: 'rgba(239, 68, 68, 0.05)',
+              color: '#ef4444',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            🏁 今日收店結帳
+          </button>
           <button 
             onClick={onLogout}
             style={{

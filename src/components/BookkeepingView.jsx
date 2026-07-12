@@ -99,6 +99,15 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
     fetchFixedCosts();
   }, []);
 
+  // Sync closedDates across storage updates (e.g. from cashier closing shop)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setClosedDates(JSON.parse(localStorage.getItem('restaurant_closed_dates') || '[]'));
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Listen for PostgreSQL database changes in real-time
   useEffect(() => {
     const ordersChannel = supabase.channel('bookkeeping-orders')
@@ -292,26 +301,19 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
     }
   };
 
-  // Settle & Close store logic
-  const handleCloseShopPrompt = () => {
-    const pwd = window.prompt("請輸入收店對帳密碼：");
-    if (pwd === '8888') {
-      const updated = [...closedDates, selectedBookkeepingDate];
-      setClosedDates(updated);
-      localStorage.setItem('restaurant_closed_dates', JSON.stringify(updated));
-      alert("收店結帳驗證成功！已解鎖今日流水帳明細與報表資訊。");
-    } else if (pwd !== null) {
-      alert("驗證密碼錯誤！無法收店。");
-    }
-  };
-
-  // Re-open store for editing
+  // Re-open store for editing (requires admin code)
   const handleReopenShop = () => {
     if (window.confirm("警告：您確定要重開此日期的帳目嗎？\n重開帳目後，該日流水明細將再次鎖定。")) {
-      const updated = closedDates.filter(d => d !== selectedBookkeepingDate);
-      setClosedDates(updated);
-      localStorage.setItem('restaurant_closed_dates', JSON.stringify(updated));
-      alert("帳目已成功重開，流水已被鎖定。");
+      const pwd = window.prompt("請輸入管理員對帳密碼以重開：");
+      if (pwd === '8888') {
+        const updated = closedDates.filter(d => d !== selectedBookkeepingDate);
+        setClosedDates(updated);
+        localStorage.setItem('restaurant_closed_dates', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+        alert("帳目已成功重開，流水已被鎖定。");
+      } else if (pwd !== null) {
+        alert("密碼錯誤，重開失敗！");
+      }
     }
   };
 
@@ -393,18 +395,23 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
   const getMonthlyReports = () => {
     const reports = {};
     
-    // Group Revenue
+    // Group Revenue (only from closed dates)
     orders.forEach(o => {
       if (o.status !== 'completed') return;
-      const month = new Date(o.timestamp).toISOString().slice(0, 7);
+      const orderDate = new Date(o.timestamp).toISOString().split('T')[0];
+      if (!closedDates.includes(orderDate)) return;
+      
+      const month = orderDate.slice(0, 7);
       if (!reports[month]) {
         reports[month] = { month, revenue: 0, variableCosts: 0, fixedCosts: 0 };
       }
       reports[month].revenue += o.total;
     });
 
-    // Group Purchases
+    // Group Purchases (only from closed dates)
     purchases.forEach(p => {
+      if (!closedDates.includes(p.date)) return;
+      
       const month = p.date.slice(0, 7);
       if (!reports[month]) {
         reports[month] = { month, revenue: 0, variableCosts: 0, fixedCosts: 0 };
@@ -512,25 +519,18 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
       }}>
         <div>
           {isClosedToday ? (
-            <span style={{ color: '#16a34a', fontWeight: 'bold' }}>🔴 本日已對帳封存 (已完成收店結帳)</span>
+            <span style={{ color: '#16a34a', fontWeight: 'bold' }}>🔴 本日已對帳封存 (已在收銀機完成收店結帳)</span>
           ) : (
-            <span style={{ color: '#ef4444', fontWeight: 'bold' }}>🟢 本日營業記帳中 (帳目未封存，流水明細鎖定中)</span>
+            <span style={{ color: '#ef4444', fontWeight: 'bold' }}>🟢 本日營業中 (請至收銀系統進行「今日收店結帳」以在此對帳)</span>
           )}
         </div>
         <div>
-          {isClosedToday ? (
+          {isClosedToday && (
             <button 
               onClick={handleReopenShop}
               style={{ padding: '2px 8px', fontSize: '0.7rem', borderRadius: '4px', border: '1px solid #ef4444', color: '#ef4444', backgroundColor: 'transparent', cursor: 'pointer', fontWeight: 'bold' }}
             >
               🔓 重開帳目
-            </button>
-          ) : (
-            <button 
-              onClick={handleCloseShopPrompt}
-              style={{ padding: '4px 12px', fontSize: '0.75rem', borderRadius: '4px', border: 'none', backgroundColor: '#ef4444', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              🚪 本日收店結帳
             </button>
           )}
         </div>
@@ -559,26 +559,12 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
             <h2 style={{ fontSize: '1.2rem', fontWeight: '900', margin: '15px 0 8px 0', color: 'var(--text-main)' }}>
               營業流水明細鎖定中
             </h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '24px' }}>
-              為保護收銀財務安全，在點擊「本日收店結帳」並完成密碼驗證前，系統不公開當日累計營收與流水對帳單。
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '12px' }}>
+              為保護現場收銀財務安全，請在現場收銀系統 (POS) 點擊「今日收店結帳」並輸入關店密碼以關閉今日營業。
             </p>
-            <button 
-              onClick={handleCloseShopPrompt}
-              style={{
-                width: '100%',
-                padding: '12px',
-                fontSize: '0.9rem',
-                fontWeight: 'bold',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: 'var(--primary)',
-                color: 'white',
-                cursor: 'pointer',
-                boxShadow: 'var(--shadow-sm)'
-              }}
-            >
-              🔑 本日收店結帳並解鎖帳目
-            </button>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '0' }}>
+              收店成功後，此頁面將自動解鎖並彙整今日流水對帳單與更新月報表。
+            </p>
           </div>
         </div>
       ) : (
