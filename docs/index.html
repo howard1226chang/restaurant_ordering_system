@@ -42,8 +42,8 @@
   </style>
   <script>
     // 網域名稱配置
-    const MAIN_SITE = "https://dragon.twabc.com" + window.location.search;   // 主站 (Netlify)
-    const BACKUP_SITE = "https://dragon1.twabc.com" + window.location.search; // 備援站 (Vercel)
+    const MAIN_SITE = "https://dragon1.twabc.com" + window.location.search;   // 主站 (Vercel - 正常更新中)
+    const BACKUP_SITE = "https://dragon.twabc.com" + window.location.search; // 備援站 (Netlify - 額度用盡)
     const TIMEOUT_MS = 3000; // 等待主站回應的超時時間 (3秒)
 
     let isRedirected = false;

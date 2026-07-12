@@ -547,9 +547,16 @@ export default function KitchenView({ onBackToDemo, onLogout }) {
                 }}
               >
                 <option value="">-- 選擇要管理的品項 --</option>
-                {menuItems.map(item => (
-                  <option key={item.id} value={item.id}>{item.name} (${item.price})</option>
-                ))}
+                <optgroup label="🍜 一般產品">
+                  {menuItems.filter(item => item.category === 'mee-sua').map(item => (
+                    <option key={item.id} value={item.id}>{item.name} (${item.price})</option>
+                  ))}
+                </optgroup>
+                <optgroup label="🔥 特色產品">
+                  {menuItems.filter(item => item.category !== 'mee-sua').map(item => (
+                    <option key={item.id} value={item.id}>{item.name} (${item.price})</option>
+                  ))}
+                </optgroup>
               </select>
             )}
           </div>
@@ -575,7 +582,7 @@ export default function KitchenView({ onBackToDemo, onLogout }) {
                       <div>
                         <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: '0 0 4px 0' }}>{item.name}</h5>
                         <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          <span>分類: {item.category === 'mee-sua' ? '🍜 招牌麵線' : '🔥 特色產品'}</span>
+                          <span>分類: {item.category === 'mee-sua' ? '🍜 一般產品' : '🔥 特色產品'}</span>
                           <span>單價: <strong>NT$ {item.price}</strong></span>
                           <span>客製: {item.customizations ? '📋 標準規格' : '🚫 僅選數量'}</span>
                         </div>
@@ -693,7 +700,7 @@ export default function KitchenView({ onBackToDemo, onLogout }) {
                       onChange={(e) => setProdCategory(e.target.value)}
                       style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', cursor: 'pointer' }}
                     >
-                      <option value="mee-sua">🍜 招牌麵線</option>
+                      <option value="mee-sua">🍜 一般產品</option>
                       <option value="specialties">🔥 特色產品</option>
                     </select>
                   </div>
