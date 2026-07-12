@@ -9,8 +9,8 @@ export default function CashierView({ onLogout }) {
   const [cart, setCart] = useState([]);
   
   // Checkout details
-  const [orderType, setOrderType] = useState('dine-in'); // 'dine-in' or 'takeout'
-  const [tableNumber, setTableNumber] = useState('1');
+  const [orderType, setOrderType] = useState('takeout'); // Default to counter takeout
+  const [tableNumber, setTableNumber] = useState(null);
   const [custName, setCustName] = useState('');
   const [remarks, setRemarks] = useState('');
   
@@ -743,78 +743,7 @@ export default function CashierView({ onLogout }) {
               flexDirection: 'column',
               gap: '12px'
             }}>
-              {/* Order Type Select */}
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setOrderType('dine-in')}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    fontSize: '0.8rem',
-                    fontWeight: 'bold',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid',
-                    borderColor: orderType === 'dine-in' ? 'var(--primary)' : 'var(--border)',
-                    backgroundColor: orderType === 'dine-in' ? 'var(--primary)' : 'var(--bg-card)',
-                    color: orderType === 'dine-in' ? 'white' : 'var(--text-main)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  🍽️ 現場內用
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOrderType('takeout')}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    fontSize: '0.8rem',
-                    fontWeight: 'bold',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid',
-                    borderColor: orderType === 'takeout' ? 'var(--primary)' : 'var(--border)',
-                    backgroundColor: orderType === 'takeout' ? 'var(--primary)' : 'var(--bg-card)',
-                    color: orderType === 'takeout' ? 'white' : 'var(--text-main)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  🛍️ 現場外帶
-                </button>
-              </div>
 
-              {/* Table Selection for Dine-in */}
-              {orderType === 'dine-in' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>內用桌號 *</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => {
-                      const isSelected = tableNumber === String(n);
-                      return (
-                        <button
-                          key={n}
-                          type="button"
-                          onClick={() => setTableNumber(String(n))}
-                          style={{
-                            padding: '6px 0',
-                            fontSize: '0.8rem',
-                            fontWeight: 'bold',
-                            borderRadius: '6px',
-                            border: '1px solid',
-                            borderColor: isSelected ? 'var(--primary)' : 'var(--border)',
-                            backgroundColor: isSelected ? 'var(--primary)' : 'var(--bg-card)',
-                            color: isSelected ? 'white' : 'var(--text-main)',
-                            cursor: 'pointer',
-                            transition: 'all 0.1s ease'
-                          }}
-                        >
-                          {n}桌
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
               {/* Total & Discount display */}
               <div style={{
