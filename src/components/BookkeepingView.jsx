@@ -20,6 +20,7 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
   });
 
   // Form states for adding purchases (Variable Costs)
+  const [purchaseDate, setPurchaseDate] = useState(selectedBookkeepingDate || '');
   const [purchaseVendor, setPurchaseVendor] = useState('');
   const [purchaseItemName, setPurchaseItemName] = useState('滷大腸');
   const [purchaseQty, setPurchaseQty] = useState('');
@@ -108,6 +109,11 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  // Sync form purchase date with selected viewing date
+  useEffect(() => {
+    setPurchaseDate(selectedBookkeepingDate);
+  }, [selectedBookkeepingDate]);
+
   // Listen for PostgreSQL database changes in real-time
   useEffect(() => {
     const ordersChannel = supabase.channel('bookkeeping-orders')
@@ -185,7 +191,7 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
       try {
         const { error } = await supabase.from('purchases').insert([{
           purchase_id: `PUR-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
-          date: selectedBookkeepingDate,
+          date: purchaseDate,
           time,
           vendor: purchaseVendor.trim(),
           item_name: purchaseItemName,
@@ -202,7 +208,7 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
     } else {
       const newPurchase = {
         id: `PUR-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
-        date: selectedBookkeepingDate,
+        date: purchaseDate,
         time,
         vendor: purchaseVendor.trim(),
         itemName: purchaseItemName,
@@ -808,6 +814,17 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
                   gap: '12px',
                   alignItems: 'flex-end'
                 }}>
+                  <div style={{ flex: '1 1 130px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>支出日期</label>
+                    <input 
+                      type="date" 
+                      required
+                      value={purchaseDate}
+                      onChange={(e) => setPurchaseDate(e.target.value)}
+                      style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid var(--border)', color: 'var(--text-main)', backgroundColor: 'var(--bg-card)' }}
+                    />
+                  </div>
+
                   <div style={{ flex: '1 1 180px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>進貨廠商</label>
                     <input 
