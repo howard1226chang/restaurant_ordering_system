@@ -492,14 +492,43 @@ export default function KitchenView({ onBackToDemo, onLogout }) {
         boxShadow: 'var(--shadow-sm)'
       }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Left Side: Condiment Quick Supply Switches */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '1.4rem' }}>⚙️</span>
-            <div>
-              <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>後台系統設定與供應控制</h4>
-              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0 }}>菜單單品上架、佐料供應開關與餐點管理</p>
+            <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-muted)', marginRight: '4px' }}>🌿 前台佐料供應狀態：</span>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {Object.entries(condimentsAvailability).map(([name, isAvailable]) => (
+                <label 
+                  key={name} 
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    border: '1px solid var(--border)',
+                    borderRadius: '12px',
+                    backgroundColor: isAvailable ? 'rgba(255, 107, 53, 0.05)' : 'var(--bg-input)',
+                    borderColor: isAvailable ? 'var(--primary)' : 'var(--border)',
+                    fontWeight: isAvailable ? 'bold' : 'normal',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    userSelect: 'none',
+                    transition: 'all 0.1s ease'
+                  }}
+                >
+                  <input 
+                    type="checkbox" 
+                    checked={isAvailable} 
+                    onChange={() => handleCondimentToggle(name)}
+                    style={{ cursor: 'pointer', width: '13px', height: '13px', accentColor: 'var(--primary)', margin: 0 }}
+                  />
+                  <span>{name} ({isAvailable ? '🟢' : '🔴'})</span>
+                </label>
+              ))}
             </div>
           </div>
           
+          {/* Right Side: Category Select Menu */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <select 
               value={selectedManageType} 
@@ -521,7 +550,6 @@ export default function KitchenView({ onBackToDemo, onLogout }) {
             >
               <option value="general">🍜 一般產品供應與管理</option>
               <option value="specialties">🔥 特色產品供應與管理</option>
-              <option value="condiment">🌿 前台佐料供應管理</option>
               <option value="add-new">➕ 新增自訂單品上架</option>
             </select>
           </div>
@@ -596,43 +624,7 @@ export default function KitchenView({ onBackToDemo, onLogout }) {
             </div>
           )}
 
-          {selectedManageType === 'condiment' && (
-            <div>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px', marginTop: 0 }}>
-                提示：在此切換的佐料狀態會即時生效，前台顧客點單或櫃檯 POS 點餐時將不顯示已下架的佐料按鈕。
-              </p>
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                {Object.entries(condimentsAvailability).map(([name, isAvailable]) => (
-                  <label 
-                    key={name} 
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '8px 16px',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--radius-full)',
-                      backgroundColor: isAvailable ? 'rgba(255, 107, 53, 0.05)' : 'var(--bg-input)',
-                      borderColor: isAvailable ? 'var(--primary)' : 'var(--border)',
-                      fontWeight: isAvailable ? '600' : 'normal',
-                      cursor: 'pointer',
-                      transition: 'var(--transition)',
-                      fontSize: '0.8rem',
-                      userSelect: 'none'
-                    }}
-                  >
-                    <input 
-                      type="checkbox" 
-                      checked={isAvailable} 
-                      onChange={() => handleCondimentToggle(name)}
-                      style={{ cursor: 'pointer', width: '14px', height: '14px', accentColor: 'var(--primary)' }}
-                    />
-                    <span>{name} {isAvailable ? '🟢 正常供應' : '🔴 暫停供應'}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
+
 
           {selectedManageType === 'add-new' && (
             <div style={{ padding: '4px' }}>
