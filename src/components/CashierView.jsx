@@ -1024,6 +1024,7 @@ export default function CashierView({ onLogout }) {
           onClose={() => setActiveItemForModal(null)}
           onAddToCart={handleAddToCartFromModal}
           condimentsAvailability={null} // POS cashier has full options
+          isPos={true}
         />
       )}
     </div>

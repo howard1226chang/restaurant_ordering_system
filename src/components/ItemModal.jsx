@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function ItemModal({ item, onClose, onAddToCart, condimentsAvailability }) {
+export default function ItemModal({ item, onClose, onAddToCart, condimentsAvailability, isPos = false }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedRadioOptions, setSelectedRadioOptions] = useState({});
   const [selectedCheckboxes, setSelectedCheckboxes] = useState({});
@@ -114,6 +114,7 @@ export default function ItemModal({ item, onClose, onAddToCart, condimentsAvaila
             specs.push(`${customGroup.title}: ${selectedList.join(', ')}`);
           }
         } else if (customGroup.type === 'selects') {
+          if (isPos) return;
           const dropdownList = Object.entries(selectedDropdowns[key] || {})
             .filter(([name]) => !condimentsAvailability || condimentsAvailability[name] !== false)
             .map(([name, val]) => `${name}(${val})`);
@@ -218,6 +219,7 @@ export default function ItemModal({ item, onClose, onAddToCart, condimentsAvaila
     }
 
     if (customGroup.type === 'selects') {
+      if (isPos) return null;
       const availableOptions = customGroup.options.filter(
         opt => !condimentsAvailability || condimentsAvailability[opt.name] !== false
       );
