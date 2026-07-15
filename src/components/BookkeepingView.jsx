@@ -2,6 +2,115 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { formatSupabaseOrder } from './CustomerView';
 
+const defaultInventory = [
+  { name: '紅麵線', qty: 100, unit: '斤', minStock: 20 },
+  { name: '新鮮蚵仔', qty: 30, unit: '斤', minStock: 5 },
+  { name: '滷大腸', qty: 50, unit: '斤', minStock: 10 },
+  { name: '豬肚', qty: 30, unit: '斤', minStock: 8 },
+  { name: '肉羹', qty: 40, unit: '斤', minStock: 10 },
+  { name: '花枝羹', qty: 40, unit: '斤', minStock: 10 },
+  { name: '貢丸', qty: 200, unit: '個', minStock: 50 },
+  { name: '皮蛋', qty: 120, unit: '個', minStock: 30 },
+  { name: '板豆腐', qty: 60, unit: '盒', minStock: 15 },
+  { name: '黃金泡菜(備料)', qty: 80, unit: '份', minStock: 20 },
+  { name: '紅茶(備料)', qty: 150, unit: '杯', minStock: 45 },
+  { name: '外帶紙碗/內用清潔費', qty: 500, unit: '個', minStock: 100 },
+  { name: '免洗湯匙', qty: 500, unit: '個', minStock: 100 },
+  { name: '新鮮香菜', qty: 15, unit: '斤', minStock: 3 },
+  { name: '特製辣醬', qty: 20, unit: '罐', minStock: 5 },
+  { name: '大蒜/辛香料', qty: 25, unit: '斤', minStock: 5 },
+  { name: '桶裝瓦斯', qty: 10, unit: '桶', minStock: 2 }
+];
+
+const RECIPES = {
+  '綜合麵線': [
+    { name: '紅麵線', qty: 0.1, unit: '斤' },
+    { name: '滷大腸', qty: 0.04, unit: '斤' },
+    { name: '豬肚', qty: 0.04, unit: '斤' },
+    { name: '肉羹', qty: 0.04, unit: '斤' },
+    { name: '花枝羹', qty: 0.04, unit: '斤' },
+    { name: '貢丸', qty: 1, unit: '個' },
+    { name: '外帶紙碗/內用清潔費', qty: 1, unit: '個' },
+    { name: '免洗湯匙', qty: 1, unit: '個' }
+  ],
+  '大腸麵線': [
+    { name: '紅麵線', qty: 0.1, unit: '斤' },
+    { name: '滷大腸', qty: 0.15, unit: '斤' },
+    { name: '外帶紙碗/內用清潔費', qty: 1, unit: '個' },
+    { name: '免洗湯匙', qty: 1, unit: '個' }
+  ],
+  '豬肚麵線': [
+    { name: '紅麵線', qty: 0.1, unit: '斤' },
+    { name: '豬肚', qty: 0.15, unit: '斤' },
+    { name: '外帶紙碗/內用清潔費', qty: 1, unit: '個' },
+    { name: '免洗湯匙', qty: 1, unit: '個' }
+  ],
+  '肉羹麵線': [
+    { name: '紅麵線', qty: 0.1, unit: '斤' },
+    { name: '肉羹', qty: 0.15, unit: '斤' },
+    { name: '外帶紙碗/內用清潔費', qty: 1, unit: '個' },
+    { name: '免洗湯匙', qty: 1, unit: '個' }
+  ],
+  '花枝麵線': [
+    { name: '紅麵線', qty: 0.1, unit: '斤' },
+    { name: '花枝羹', qty: 0.15, unit: '斤' },
+    { name: '外帶紙碗/內用清潔費', qty: 1, unit: '個' },
+    { name: '免洗湯匙', qty: 1, unit: '個' }
+  ],
+  '貢丸麵線': [
+    { name: '紅麵線', qty: 0.1, unit: '斤' },
+    { name: '貢丸', qty: 2, unit: '個' },
+    { name: '外帶紙碗/內用清潔費', qty: 1, unit: '個' },
+    { name: '免洗湯匙', qty: 1, unit: '個' }
+  ],
+  '清麵線': [
+    { name: '紅麵線', qty: 0.1, unit: '斤' },
+    { name: '外帶紙碗/內用清潔費', qty: 1, unit: '個' },
+    { name: '免洗湯匙', qty: 1, unit: '個' }
+  ],
+  '皮蛋豆腐': [
+    { name: '皮蛋', qty: 1, unit: '個' },
+    { name: '板豆腐', qty: 1, unit: '盒' }
+  ],
+  '黃金泡菜': [
+    { name: '黃金泡菜(備料)', qty: 1, unit: '份' }
+  ],
+  '滷大腸': [
+    { name: '滷大腸', qty: 0.3, unit: '斤' }
+  ],
+  '紅茶': [
+    { name: '紅茶(備料)', qty: 1, unit: '杯' }
+  ]
+};
+
+const mapPurchaseToInventory = (purchaseItemName) => {
+  const mapping = {
+    '紅麵線': '紅麵線',
+    '新鮮蚵仔': '新鮮蚵仔',
+    '滷大腸': '滷大腸',
+    '新鮮香菜': '新鮮香菜',
+    '特製辣醬': '特製辣醬',
+    '大蒜/辛香料': '大蒜/辛香料',
+    '桶裝瓦斯': '桶裝瓦斯',
+    '其他雜物': null
+  };
+  return mapping[purchaseItemName] || null;
+};
+
+const mapPurchaseUnit = (purchaseItemName) => {
+  const mapping = {
+    '紅麵線': '斤',
+    '新鮮蚵仔': '斤',
+    '滷大腸': '斤',
+    '新鮮香菜': '斤',
+    '特製辣醬': '罐',
+    '大蒜/辛香料': '斤',
+    '桶裝瓦斯': '桶',
+    '其他雜物': '個'
+  };
+  return mapping[purchaseItemName] || '個';
+};
+
 export default function BookkeepingView({ onBackToDemo, onLogout }) {
   const [orders, setOrders] = useState([]);
   const [purchases, setPurchases] = useState([]);
@@ -26,6 +135,24 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
   const [purchaseQty, setPurchaseQty] = useState('');
   const [purchaseCost, setPurchaseCost] = useState('');
   const [purchaseStatus, setPurchaseStatus] = useState('paid');
+
+  // Inventory States
+  const [inventory, setInventory] = useState(() => {
+    const saved = localStorage.getItem('restaurant_inventory');
+    return saved ? JSON.parse(saved) : defaultInventory;
+  });
+  const [processedOrderIds, setProcessedOrderIds] = useState(() => {
+    const saved = localStorage.getItem('restaurant_processed_orders');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [inventoryLogs, setInventoryLogs] = useState(() => {
+    const saved = localStorage.getItem('restaurant_inventory_logs');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [adjItemName, setAdjItemName] = useState('');
+  const [adjType, setAdjType] = useState('add'); // 'add', 'sub', 'set'
+  const [adjQty, setAdjQty] = useState('');
+  const [adjRemarks, setAdjRemarks] = useState('');
 
   // Form states for adding fixed costs
   const [fcName, setFcName] = useState('');
@@ -114,6 +241,76 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
     setPurchaseDate(selectedBookkeepingDate);
   }, [selectedBookkeepingDate]);
 
+  // Save inventory to local storage on changes
+  useEffect(() => {
+    localStorage.setItem('restaurant_inventory', JSON.stringify(inventory));
+  }, [inventory]);
+
+  // Process completed orders to decrease inventory automatically
+  useEffect(() => {
+    if (orders.length === 0) return;
+
+    const completedOrders = orders.filter(o => o.status === 'completed');
+    const newProcessedIds = [...processedOrderIds];
+    const newLogs = [];
+    let processedAny = false;
+
+    const ordersToProcess = completedOrders.filter(order => !newProcessedIds.includes(order.id));
+
+    if (ordersToProcess.length === 0) return;
+
+    setInventory(prevInventory => {
+      const newInventory = prevInventory.map(item => ({ ...item }));
+
+      ordersToProcess.forEach(order => {
+        const cartItems = order.items?.cart || [];
+        cartItems.forEach(cartItem => {
+          const recipe = RECIPES[cartItem.name];
+          if (recipe) {
+            recipe.forEach(ingredient => {
+              const target = newInventory.find(i => i.name === ingredient.name);
+              if (target) {
+                const totalConsumption = cartItem.quantity * ingredient.qty;
+                target.qty = Math.max(0, Number((target.qty - totalConsumption).toFixed(2)));
+
+                newLogs.push({
+                  id: `LOG-SALE-${order.id.slice(-6)}-${ingredient.name}-${Date.now()}`,
+                  time: order.time || new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+                  date: order.date || new Date().toISOString().split('T')[0],
+                  itemName: ingredient.name,
+                  type: '銷售扣減(聯動)',
+                  change: `-${totalConsumption}`,
+                  unit: ingredient.unit,
+                  remarks: `交易單號: ${order.serialNum || order.id.slice(-6)} [${cartItem.name} x ${cartItem.quantity}]`
+                });
+              }
+            });
+          }
+        });
+        newProcessedIds.push(order.id);
+        processedAny = true;
+      });
+
+      if (processedAny) {
+        localStorage.setItem('restaurant_inventory', JSON.stringify(newInventory));
+      }
+      return newInventory;
+    });
+
+    if (processedAny) {
+      setProcessedOrderIds(newProcessedIds);
+      localStorage.setItem('restaurant_processed_orders', JSON.stringify(newProcessedIds));
+
+      if (newLogs.length > 0) {
+        setInventoryLogs(prev => {
+          const updatedLogs = [...newLogs, ...prev].slice(0, 50);
+          localStorage.setItem('restaurant_inventory_logs', JSON.stringify(updatedLogs));
+          return updatedLogs;
+        });
+      }
+    }
+  }, [orders, processedOrderIds]);
+
   // Listen for PostgreSQL database changes in real-time
   useEffect(() => {
     const ordersChannel = supabase.channel('bookkeeping-orders')
@@ -179,6 +376,96 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
     }
   };
 
+  // Helper to sync purchase to inventory
+  const updateInventoryFromPurchase = (vendor, itemName, qtyText, dateText, timeText) => {
+    const numericQty = parseFloat(qtyText.replace(/[^0-9.]/g, '')) || 0;
+    const mappedName = mapPurchaseToInventory(itemName);
+
+    if (mappedName && numericQty > 0) {
+      setInventory(prev => {
+        const updated = prev.map(item => {
+          if (item.name === mappedName) {
+            return { ...item, qty: Number((item.qty + numericQty).toFixed(2)) };
+          }
+          return item;
+        });
+        localStorage.setItem('restaurant_inventory', JSON.stringify(updated));
+        return updated;
+      });
+
+      // Create inventory log
+      const newLog = {
+        id: `LOG-PUR-${Date.now()}`,
+        time: timeText,
+        date: dateText,
+        itemName: mappedName,
+        type: '採購進貨(聯動)',
+        change: `+${numericQty}`,
+        unit: mapPurchaseUnit(itemName),
+        remarks: `進貨登記聯動 [廠商: ${vendor}]`
+      };
+      setInventoryLogs(prev => {
+        const updatedLogs = [newLog, ...prev].slice(0, 50);
+        localStorage.setItem('restaurant_inventory_logs', JSON.stringify(updatedLogs));
+        return updatedLogs;
+      });
+    }
+  };
+
+  // Helper for manual adjustment submission
+  const handleManualInventoryAdjustment = (e) => {
+    e.preventDefault();
+    if (!adjItemName || !adjQty) return;
+    const qtyVal = Number(adjQty);
+    if (isNaN(qtyVal) || qtyVal <= 0) {
+      alert("請輸入有效的數量！");
+      return;
+    }
+
+    const targetItem = inventory.find(i => i.name === adjItemName);
+    if (!targetItem) return;
+
+    let newQty = targetItem.qty;
+    let typeLabel = '';
+    if (adjType === 'add') {
+      newQty = Number((targetItem.qty + qtyVal).toFixed(2));
+      typeLabel = '手動補貨';
+    } else if (adjType === 'sub') {
+      newQty = Math.max(0, Number((targetItem.qty - qtyVal).toFixed(2)));
+      typeLabel = '損耗扣除';
+    } else if (adjType === 'set') {
+      newQty = qtyVal;
+      typeLabel = '盤點修正';
+    }
+
+    const updatedInventory = inventory.map(item => {
+      if (item.name === adjItemName) {
+        return { ...item, qty: newQty };
+      }
+      return item;
+    });
+    setInventory(updatedInventory);
+    localStorage.setItem('restaurant_inventory', JSON.stringify(updatedInventory));
+
+    const newLog = {
+      id: `LOG-${Date.now()}`,
+      time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+      date: new Date().toISOString().split('T')[0],
+      itemName: adjItemName,
+      type: typeLabel,
+      change: adjType === 'set' ? `重設為 ${qtyVal}` : `${adjType === 'add' ? '+' : '-'}${qtyVal}`,
+      unit: targetItem.unit,
+      remarks: adjRemarks.trim() || '無備註'
+    };
+    const updatedLogs = [newLog, ...inventoryLogs].slice(0, 50);
+    setInventoryLogs(updatedLogs);
+    localStorage.setItem('restaurant_inventory_logs', JSON.stringify(updatedLogs));
+
+    setAdjQty('');
+    setAdjRemarks('');
+    alert("庫存盤點調整成功！");
+  };
+
   // Add Purchase (Variable Cost)
   const handleAddPurchase = async (e) => {
     e.preventDefault();
@@ -200,6 +487,7 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
           status: purchaseStatus
         }]);
         if (error) throw error;
+        updateInventoryFromPurchase(purchaseVendor.trim(), purchaseItemName, purchaseQty.trim(), purchaseDate, time);
         fetchPurchases();
       } catch (err) {
         console.error("Failed to add purchase in BookkeepingView:", err);
@@ -219,6 +507,7 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
       const updated = [newPurchase, ...purchases];
       setPurchases(updated);
       localStorage.setItem('restaurant_purchases', JSON.stringify(updated));
+      updateInventoryFromPurchase(purchaseVendor.trim(), purchaseItemName, purchaseQty.trim(), purchaseDate, time);
       fetchPurchases();
     }
 
@@ -734,6 +1023,21 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
             >
               📅 按月財務報表
             </button>
+            <button 
+              onClick={() => setActiveTab('inventory')} 
+              style={{
+                padding: '10px 20px',
+                fontSize: '0.85rem',
+                fontWeight: 'bold',
+                border: 'none',
+                borderBottom: activeTab === 'inventory' ? '3px solid var(--primary)' : '3px solid transparent',
+                backgroundColor: 'transparent',
+                color: activeTab === 'inventory' ? 'var(--primary)' : 'var(--text-muted)',
+                cursor: 'pointer'
+              }}
+            >
+              📦 倉儲物料庫存
+            </button>
           </div>
 
           {/* TAB CONTENTS */}
@@ -1127,6 +1431,185 @@ export default function BookkeepingView({ onBackToDemo, onLogout }) {
                       )}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+
+            {/* 5. INVENTORY & WAREHOUSE SYSTEM */}
+            {activeTab === 'inventory' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+                {/* Left Side: Stock List */}
+                <div style={{ flex: '1 1 60%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>📦 倉儲物料與食材庫存狀態</h4>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      安全庫存警戒數: <strong style={{ color: '#ef4444' }}>{inventory.filter(i => i.qty <= i.minStock).length}</strong>
+                    </span>
+                  </div>
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: '6px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: 'var(--bg-input)', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                          <th style={{ padding: '10px 12px' }}>項目</th>
+                          <th style={{ padding: '10px 12px' }}>目前庫存</th>
+                          <th style={{ padding: '10px 12px' }}>安全警戒線</th>
+                          <th style={{ padding: '10px 12px' }}>狀態</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center' }}>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {inventory.map(item => {
+                          const isWarning = item.qty <= item.minStock;
+                          const isOut = item.qty <= 0;
+                          return (
+                            <tr key={item.name} style={{ borderBottom: '1px solid var(--border)', backgroundColor: isWarning ? 'rgba(239, 68, 68, 0.02)' : 'transparent' }}>
+                              <td style={{ padding: '10px 12px', fontWeight: 'bold' }}>{item.name}</td>
+                              <td style={{ padding: '10px 12px', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                                {item.qty} {item.unit}
+                              </td>
+                              <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{item.minStock} {item.unit}</td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <span style={{
+                                  padding: '2px 8px',
+                                  borderRadius: '12px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 'bold',
+                                  backgroundColor: isOut ? 'rgba(239,68,68,0.15)' : (isWarning ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.15)'),
+                                  color: isOut ? '#ef4444' : (isWarning ? '#f59e0b' : '#16a34a')
+                                }}>
+                                  {isOut ? '🔴 缺貨' : (isWarning ? '🟡 偏低' : '🟢 正常')}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                <button 
+                                  onClick={() => {
+                                    setAdjItemName(item.name);
+                                    setAdjType('add');
+                                    const input = document.getElementById('adj-qty-input');
+                                    if (input) input.focus();
+                                  }}
+                                  style={{ padding: '2px 8px', fontSize: '0.7rem', borderRadius: '4px', border: '1px solid var(--primary)', color: 'var(--primary)', backgroundColor: 'transparent', cursor: 'pointer', fontWeight: 'bold' }}
+                                >
+                                  盤點登記
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Right Side: Adjustment Form & Logs */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {/* Adjustment Form */}
+                  <form onSubmit={handleManualInventoryAdjustment} style={{
+                    backgroundColor: 'var(--bg-body)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '6px',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}>
+                    <h5 style={{ fontSize: '0.85rem', fontWeight: 'bold', margin: 0, borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                      📋 倉儲食材/器具手動盤點異動
+                    </h5>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>選擇項目</label>
+                      <select 
+                        value={adjItemName}
+                        onChange={(e) => setAdjItemName(e.target.value)}
+                        style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid var(--border)', color: 'var(--text-main)', backgroundColor: 'var(--bg-card)' }}
+                        required
+                      >
+                        <option value="">-- 選擇庫存品項 --</option>
+                        {inventory.map(item => (
+                          <option key={item.name} value={item.name}>{item.name} ({item.unit})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>異動類型</label>
+                        <select 
+                          value={adjType}
+                          onChange={(e) => setAdjType(e.target.value)}
+                          style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid var(--border)', color: 'var(--text-main)', backgroundColor: 'var(--bg-card)', height: '33px' }}
+                        >
+                          <option value="add">➕ 手動進貨/增加</option>
+                          <option value="sub">➖ 損耗扣除/減少</option>
+                          <option value="set">📝 盤點修正/重設</option>
+                        </select>
+                      </div>
+                      
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>數量</label>
+                        <input 
+                          id="adj-qty-input"
+                          type="number" 
+                          step="0.01"
+                          placeholder="輸入數量"
+                          value={adjQty}
+                          onChange={(e) => setAdjQty(e.target.value)}
+                          style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid var(--border)', color: 'var(--text-main)', backgroundColor: 'var(--bg-card)' }}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>備註說明 (原因)</label>
+                      <input 
+                        type="text" 
+                        placeholder="例如: 盤點誤差校正、毀損丟棄"
+                        value={adjRemarks}
+                        onChange={(e) => setAdjRemarks(e.target.value)}
+                        style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid var(--border)', color: 'var(--text-main)', backgroundColor: 'var(--bg-card)' }}
+                      />
+                    </div>
+
+                    <button type="submit" style={{ padding: '8px 16px', fontSize: '0.8rem', borderRadius: '4px', border: 'none', backgroundColor: 'var(--primary)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
+                      💾 儲存異動紀錄
+                    </button>
+                  </form>
+
+                  {/* Logs list */}
+                  <div style={{
+                    backgroundColor: 'var(--bg-body)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '6px',
+                    padding: '16px',
+                    maxHeight: '260px',
+                    overflowY: 'auto'
+                  }}>
+                    <h5 style={{ fontSize: '0.85rem', fontWeight: 'bold', margin: '0 0 10px 0', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
+                      ⏳ 庫存歷史異動日誌 (聯動記錄)
+                    </h5>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.75rem' }}>
+                      {inventoryLogs.length === 0 ? (
+                        <span style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0' }}>暫無異動日誌</span>
+                      ) : (
+                        inventoryLogs.map(log => (
+                          <div key={log.id} style={{ borderBottom: '1px dashed var(--border)', paddingBottom: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '2px' }}>
+                              <span>{log.itemName} ({log.type})</span>
+                              <span style={{ color: log.change.startsWith('+') ? '#16a34a' : '#ef4444' }}>
+                                {log.change} {log.unit}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                              <span>{log.date} {log.time}</span>
+                              <span>{log.remarks}</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
